@@ -19,15 +19,10 @@ type SupportClientImpl struct {
 	SupportClient supportiface.SupportAPI
 }
 
-// SupportClient defines the expected interface of any object capable of
-// listing and removing images from a ECR repository.
 type SupportClient interface {
 	DescribeServiceLimitsCheckResult() (*support.TrustedAdvisorCheckResult, error)
 }
 
-// NewSupportClient returns a new client for interacting with the Support API.
-// The credentials are retrieved from environment variables or from the
-// `~/.aws/credentials` file.
 func NewSupportClient() *SupportClientImpl {
 	creds := credentials.NewChainCredentials(
 		[]credentials.Provider{
