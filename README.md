@@ -5,12 +5,12 @@ exposes AWS usage and limits as reported by the AWS Trusted Advisor API.
 
 ### AWS Credentials
 
-For the controller to work, it must have access to AWS credentials in
+For this to work, it must have access to AWS credentials in
 `~/.aws/credentials`, or via `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
 environment variables.
 
 The following IAM policy describes which actions the user must be able to
-perform in order for the controller to work:
+perform in order for this server to work:
 
 ```json
 {
