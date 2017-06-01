@@ -3,6 +3,7 @@ package core
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -20,6 +21,7 @@ type SupportClientImpl struct {
 }
 
 type SupportClient interface {
+	RequestServiceLimitsRefreshLoop()
 	DescribeServiceLimitsCheckResult() (*support.TrustedAdvisorCheckResult, error)
 }
 
@@ -38,6 +40,23 @@ func NewSupportClient() *SupportClientImpl {
 
 	return &SupportClientImpl{
 		SupportClient: support.New(sess),
+	}
+}
+
+func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
+	input := &support.RefreshTrustedAdvisorCheckInput{
+		CheckId: aws.String("eW7HH0l7J9"),
+	}
+
+	for {
+		output, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
+		if err != nil {
+			glog.Errorf("Error when requesting status refresh: %v", err)
+		}
+		if output.Status != nil {
+			wait := time.Duration(*output.Status.MillisUntilNextRefreshable)
+			time.Sleep(wait * time.Millisecond)
+		}
 	}
 }
 
@@ -73,6 +92,8 @@ func NewSupportExporter(region string) *SupportExporter {
 }
 
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
+	go e.supportClient.RequestServiceLimitsRefreshLoop()
+
 	if len(e.metricsUsed) == 0 {
 		result, err := e.supportClient.DescribeServiceLimitsCheckResult()
 		if err != nil {
