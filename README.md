@@ -3,6 +3,9 @@
 This is a small Go server that provides a Prometheus metrics endpoint that
 exposes AWS usage and limits as reported by the AWS Trusted Advisor API.
 
+Checks are automatically refreshed according to the `MillisUntilNextRefreshable`
+field of [TrustedAdvisorCheckRefreshStatus](http://docs.aws.amazon.com/sdk-for-go/api/service/support/#TrustedAdvisorCheckRefreshStatus).
+
 ### AWS Credentials
 
 For this to work, it must have access to AWS credentials in

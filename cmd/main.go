@@ -23,7 +23,10 @@ func main() {
 
 	glog.Infof("Kubernetes AWS Limits Monitor v%s started.", VERSION)
 
-	prometheus.Register(core.NewSupportExporter(*region))
+	exporter := core.NewSupportExporter(*region)
+	go exporter.RequestServiceLimitsRefreshLoop()
+
+	prometheus.Register(exporter)
 
 	http.Handle("/metrics", promhttp.Handler())
 	glog.Fatal(http.ListenAndServe(*addr, nil))

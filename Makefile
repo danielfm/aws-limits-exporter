@@ -1,5 +1,5 @@
 GO=CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go
-TAG=0.1.1
+TAG=0.1.2
 BIN=kube-aws-limits-monitor
 IMAGE=danielfm/$(BIN)
 
