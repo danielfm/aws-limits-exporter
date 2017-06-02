@@ -39,8 +39,8 @@ func NewSupportClient() *SupportClientImpl {
 	awsConfig := aws.NewConfig()
 	awsConfig.WithCredentials(creds)
 
-	// Trusted Advisor API does not work in every region, but it returns
-	// data for other regions, so we'll use it
+	// Trusted Advisor API does not work in every region, but we can use it
+	// via the `us-east-1` region to get data from other regions
 	awsConfig.WithRegion("us-east-1")
 
 	sess := session.New(awsConfig)
