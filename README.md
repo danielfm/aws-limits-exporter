@@ -1,4 +1,4 @@
-# K8S AWS Limits Monitor
+# AWS Limits Exporter
 
 This is a small Go server that provides a Prometheus metrics endpoint that
 exposes AWS usage and limits as reported by the AWS Trusted Advisor API.
@@ -6,7 +6,16 @@ exposes AWS usage and limits as reported by the AWS Trusted Advisor API.
 Checks are automatically refreshed according to the `MillisUntilNextRefreshable`
 field of [TrustedAdvisorCheckRefreshStatus](http://docs.aws.amazon.com/sdk-for-go/api/service/support/#TrustedAdvisorCheckRefreshStatus).
 
-### AWS Credentials
+## Usage
+
+There are Docker images ready for use:
+
+```bash
+$ docker run -it --rm -p 8080:8080 -e AWS_ACCESS_KEY=<KEY> -e AWS_SECRET_ACCESS_KEY=<SECRET> \
+      danielfm/aws-limits-exporter:latest -logtostderr -region=<REGION>
+```
+
+## AWS Credentials
 
 For this to work, it must have access to AWS credentials in
 `~/.aws/credentials`, or via `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
@@ -35,7 +44,7 @@ perform in order for this server to work:
 ## Flags
 
 ```
-Usage of ./bin/kube-aws-limits-monitor:
+Usage of ./bin/aws-limits-exporter:
   -alsologtostderr
         log to standard error as well as files
   -listen-address string

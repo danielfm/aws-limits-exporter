@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/danielfm/kube-aws-limits-monitor/core"
+	"github.com/danielfm/aws-limits-exporter/core"
 )
 
 // VERSION set by build script
@@ -21,7 +21,7 @@ var region = flag.String("region", "us-east-1", "Returns usage and limits for th
 func main() {
 	flag.Parse()
 
-	glog.Infof("Kubernetes AWS Limits Monitor v%s started.", VERSION)
+	glog.Infof("AWS Limits Exporter v%s started.", VERSION)
 
 	exporter := core.NewSupportExporter(*region)
 	go exporter.RequestServiceLimitsRefreshLoop()
