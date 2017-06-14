@@ -1,4 +1,4 @@
-GO=go
+GO=CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go
 TAG=0.1.3
 BIN=aws-limits-exporter
 IMAGE=danielfm/$(BIN)
