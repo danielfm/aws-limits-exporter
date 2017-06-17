@@ -11,8 +11,12 @@ field of [TrustedAdvisorCheckRefreshStatus](http://docs.aws.amazon.com/sdk-for-g
 There are Docker images ready for use:
 
 ```bash
+# Start exporter container
 $ docker run -it --rm -p 8080:8080 -e AWS_ACCESS_KEY=<KEY> -e AWS_SECRET_ACCESS_KEY=<SECRET> \
       danielfm/aws-limits-exporter:latest -logtostderr -region=<REGION>
+
+# Scrape metrics
+$ curl http://localhost:8080/metrics
 ```
 
 ## AWS Credentials
