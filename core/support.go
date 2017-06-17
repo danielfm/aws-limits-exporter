@@ -123,8 +123,8 @@ func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 		serviceNameLower := strings.ToLower(serviceName)
 
 		if aws.StringValue(resource.Region) == e.region {
-			e.metricsUsed[resourceId] = NewServerMetric(e.region, serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
-			e.metricsLimit[resourceId] = NewServerMetric(e.region, serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
+			e.metricsUsed[resourceId] = newServerMetric(e.region, serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
+			e.metricsLimit[resourceId] = newServerMetric(e.region, serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
 
 			ch <- e.metricsUsed[resourceId]
 			ch <- e.metricsLimit[resourceId]
@@ -158,7 +158,7 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func NewServerMetric(region, subSystem, metricName, docString string, labels []string) *prometheus.Desc {
+func newServerMetric(region, subSystem, metricName, docString string, labels []string) *prometheus.Desc {
 	return prometheus.NewDesc(
 		prometheus.BuildFQName("aws", subSystem, metricName),
 		docString, labels, prometheus.Labels{"region": region},
