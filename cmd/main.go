@@ -12,11 +12,13 @@ import (
 	"github.com/danielfm/aws-limits-exporter/core"
 )
 
-// VERSION set by build script
-var VERSION = "UNKNOWN"
+var (
+	// VERSION set by build script
+	VERSION = "UNKNOWN"
 
-var addr = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
-var region = flag.String("region", "us-east-1", "Returns usage and limits for the given AWS Region.")
+	addr   = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
+	region = flag.String("region", "us-east-1", "Returns usage and limits for the given AWS Region.")
+)
 
 func main() {
 	flag.Parse()
