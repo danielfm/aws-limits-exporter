@@ -69,6 +69,12 @@ Usage of ./bin/aws-limits-exporter:
         comma-separated list of pattern=N settings for file-filtered logging
 ```
 
+## Donate
+
+If this project is useful for you, buy me a beer!
+
+Bitcoin: `1CLFiuB5oghPjnq8zXFkYgKyFnCTVWEV1r`
+
 ## License
 
 Copyright (C) Daniel Fernandes Martins
