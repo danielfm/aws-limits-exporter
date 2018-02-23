@@ -7,6 +7,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/aws/aws-sdk-go/service/support/supportiface"
@@ -34,6 +36,9 @@ func NewSupportClient() *SupportClientImpl {
 		[]credentials.Provider{
 			&credentials.EnvProvider{},
 			&credentials.SharedCredentialsProvider{},
+			&ec2rolecreds.EC2RoleProvider{
+				Client: ec2metadata.New(session.Must(session.NewSession())),
+			},
 		})
 
 	awsConfig := aws.NewConfig()

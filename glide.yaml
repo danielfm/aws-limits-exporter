@@ -8,6 +8,8 @@ import:
   - aws/session
   - service/support
   - service/support/supportiface
+  - aws/ec2metadata
+  - aws/credentials/ec2rolecreds
 - package: github.com/golang/glog
 - package: github.com/prometheus/client_golang
   version: ^0.8.0
