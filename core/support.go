@@ -18,19 +18,31 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Service limits check
 var (
-	checkId = "eW7HH0l7J9" // Service limits check
+	checkID = "lN7RR0l7J9"
 )
 
+// SupportClientImpl ...
 type SupportClientImpl struct {
 	SupportClient supportiface.SupportAPI
 }
 
+// SupportClient ...
 type SupportClient interface {
 	RequestServiceLimitsRefreshLoop()
 	DescribeServiceLimitsCheckResult() (*support.TrustedAdvisorCheckResult, error)
 }
 
+// SupportExporter ...
+type SupportExporter struct {
+	region        string
+	supportClient SupportClient
+	metricsUsed   map[string]*prometheus.Desc
+	metricsLimit  map[string]*prometheus.Desc
+}
+
+// NewSupportClient ...
 func NewSupportClient() *SupportClientImpl {
 	creds := credentials.NewChainCredentials(
 		[]credentials.Provider{
@@ -55,13 +67,14 @@ func NewSupportClient() *SupportClientImpl {
 	}
 }
 
+// RequestServiceLimitsRefreshLoop ...
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	input := &support.RefreshTrustedAdvisorCheckInput{
-		CheckId: aws.String(checkId),
+		CheckId: aws.String(checkID),
 	}
 
 	for {
-		glog.Infof("Refreshing Trusted Advisor check '%s'...", checkId)
+		glog.Infof("Refreshing Trusted Advisor check '%s'...", checkID)
 		output, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
 		if err != nil {
 			glog.Errorf("Error when requesting status refresh: %v", err)
@@ -75,9 +88,10 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	}
 }
 
+// DescribeServiceLimitsCheckResult ...
 func (client *SupportClientImpl) DescribeServiceLimitsCheckResult() (*support.TrustedAdvisorCheckResult, error) {
 	input := &support.DescribeTrustedAdvisorCheckResultInput{
-		CheckId: aws.String(checkId),
+		CheckId: aws.String(checkID),
 	}
 
 	output, err := client.SupportClient.DescribeTrustedAdvisorCheckResult(input)
@@ -88,13 +102,7 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult() (*support.Tr
 	return output.Result, nil
 }
 
-type SupportExporter struct {
-	region        string
-	supportClient SupportClient
-	metricsUsed   map[string]*prometheus.Desc
-	metricsLimit  map[string]*prometheus.Desc
-}
-
+// NewSupportExporter ...
 func NewSupportExporter(region string) *SupportExporter {
 	client := NewSupportClient()
 
@@ -106,10 +114,12 @@ func NewSupportExporter(region string) *SupportExporter {
 	}
 }
 
+// RequestServiceLimitsRefreshLoop ...
 func (e *SupportExporter) RequestServiceLimitsRefreshLoop() {
 	e.supportClient.RequestServiceLimitsRefreshLoop()
 }
 
+// Describe ...
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 	result, err := e.supportClient.DescribeServiceLimitsCheckResult()
 	if err != nil {
@@ -117,26 +127,27 @@ func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 	}
 
 	for _, resource := range result.FlaggedResources {
-		resourceId := aws.StringValue(resource.ResourceId)
+		resourceID := aws.StringValue(resource.ResourceId)
 
 		// Sanity check in order not to report the same metric more than once
-		if _, ok := e.metricsUsed[resourceId]; ok {
+		if _, ok := e.metricsUsed[resourceID]; ok {
 			continue
 		}
 
 		serviceName := aws.StringValue(resource.Metadata[1])
 		serviceNameLower := strings.ToLower(serviceName)
+		glog.Infof("Refreshing Trusted Advisor check '%s'...", aws.StringValue(resource.Metadata[0]))
+		// if aws.StringValue(resource.Region) == e.region {
+		e.metricsUsed[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
+		e.metricsLimit[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
 
-		if aws.StringValue(resource.Region) == e.region {
-			e.metricsUsed[resourceId] = newServerMetric(e.region, serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
-			e.metricsLimit[resourceId] = newServerMetric(e.region, serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
-
-			ch <- e.metricsUsed[resourceId]
-			ch <- e.metricsLimit[resourceId]
-		}
+		ch <- e.metricsUsed[resourceID]
+		ch <- e.metricsLimit[resourceID]
+		// }
 	}
 }
 
+// Collect ...
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	result, err := e.supportClient.DescribeServiceLimitsCheckResult()
 	if err != nil {
@@ -144,17 +155,17 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for _, resource := range result.FlaggedResources {
-		resourceId := aws.StringValue(resource.ResourceId)
+		resourceID := aws.StringValue(resource.ResourceId)
 
 		// Sanity check in order not to report the same metric more than once
-		metricUsed, ok := e.metricsUsed[resourceId]
+		metricUsed, ok := e.metricsUsed[resourceID]
 		if !ok {
 			continue
 		}
 
 		resourceName := aws.StringValue(resource.Metadata[2])
 
-		metricLimit := e.metricsLimit[resourceId]
+		metricLimit := e.metricsLimit[resourceID]
 		limitValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[3]), 64)
 		ch <- prometheus.MustNewConstMetric(metricLimit, prometheus.GaugeValue, limitValue, resourceName)
 
