@@ -11,10 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/support"
-	"github.com/aws/aws-sdk-go/service/support/supportiface"
-
 	"github.com/golang/glog"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,25 +19,6 @@ import (
 var (
 	checkID = "lN7RR0l7J9"
 )
-
-// SupportClientImpl ...
-type SupportClientImpl struct {
-	SupportClient supportiface.SupportAPI
-}
-
-// SupportClient ...
-type SupportClient interface {
-	RequestServiceLimitsRefreshLoop()
-	DescribeServiceLimitsCheckResult() (*support.TrustedAdvisorCheckResult, error)
-}
-
-// SupportExporter ...
-type SupportExporter struct {
-	region        string
-	supportClient SupportClient
-	metricsUsed   map[string]*prometheus.Desc
-	metricsLimit  map[string]*prometheus.Desc
-}
 
 // NewSupportClient ...
 func NewSupportClient() *SupportClientImpl {
