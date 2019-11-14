@@ -19,7 +19,6 @@ type SupportClient interface {
 
 // SupportExporter ...
 type SupportExporter struct {
-	region        string
 	supportClient SupportClient
 	metricsUsed   map[string]*prometheus.Desc
 	metricsLimit  map[string]*prometheus.Desc
