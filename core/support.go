@@ -16,8 +16,105 @@ import (
 )
 
 // Service limits check
+// Auto Scaling - Groups		fW7HH0l7J9
+// Auto Scaling - Launch Configurations		aW7HH0l7J9
+// CloudFormation - Stacks		gW7HH0l7J9
+// DynamoDB Read Capacity		6gtQddfEw6
+// DynamoDB Write Capacity 	c5ftjdfkMr
+// EBS - Active Snapshots		eI7KK0l7J9
+// EBS - Active Volumes		fH7LL0l7J9
+// EBS - Cold HDD (sc1) 	gH5CC0e3J9
+// EBS - General Purpose SSD Volume Storage		dH7RR0l6J9
+// EBS - Magnetic (standard) Volume Storage		cG7HH0l7J9
+// EBS Throughput Optimized HDD (st1)		wH7DD0l3J9
+// EBS - Provisioned IOPS (SSD) Volume Aggregate IOPS		tV7YY0l7J9
+// EBS - Provisioned IOPS SSD (io1) Volume Storage		gI7MM0l7J9
+// EC2 - Elastic IP Addresses		aW9HH0l8J6
+// EC2 - On-Demand Instances		0Xc6LMYG8P
+// EC2 - Reserved Instance Leases		iH7PP0l7J9
+// ELB - Active Load Balancers		iK7OO0l7J9
+// IAM - Group		sU7XX0l7J9
+// IAM - Instance Profiles		nO7SS0l7J9
+// IAM - Policies		pR7UU0l7J9
+// IAM - Roles		oQ7TT0l7J9
+// IAM - Server Certificates		rT7WW0l7J9
+// IAM - Users		qS7VV0l7J9
+// Kinesis - Shards per Region		bW7HH0l7J9
+// RDS - Cluster Parameter Groups		jtlIMO3qZM
+// RDS - Cluster roles		7fuccf1Mx7
+// RDS - Clusters		gjqMBn6pjz
+// RDS - DB Instances		XG0aXHpIEt
+// RDS - DB Parameter Groups		jEECYg2YVU
+// RDS - DB Security Groups		gfZAn3W7wl
+// RDS - DB snapshots per user		dV84wpqRUs
+// RDS - Event Subscriptions		keAhfbH5yb
+// RDS - Max Auths per Security Group		dBkuNCvqn5
+// RDS - Option Groups		3Njm0DJQO9
+// RDS - Read Replicas per Master		pYW8UkYz2w
+// RDS - Reserved Instances		UUDvOa5r34
+// RDS - Subnet Groups		dYWBaXaaMM
+// RDS - Subnets per Subnet Group		jEhCtdJKOY
+// RDS - Total Storage Quota		P1jhKWEmLa
+// Route 53 Hosted Zones		dx3xfcdfMr
+// Route 53 Max Health Checks		ru4xfcdfMr
+// Route 53 Reusable Delegation Sets		ty3xfcdfMr
+// Route 53 Traffic Policies		dx3xfbjfMr
+// Route 53 Traffic Policy Instances		dx8afcdfMr
+// SES - Daily Sending Quota		hJ7NN0l7J9
+// VPC - Elastic IP Address		lN7RR0l7J9
+// VPC - Internet Gateways		kM7QQ0l7J9
+// VPC - Network Interfaces		jL7PP0l7J9
 var (
-	checkID = "lN7RR0l7J9"
+	checkIDs = []string{
+		"fW7HH0l7J9",
+		"aW7HH0l7J9",
+		"gW7HH0l7J9",
+		"6gtQddfEw6",
+		"c5ftjdfkMr",
+		"eI7KK0l7J9",
+		"fH7LL0l7J9",
+		"gH5CC0e3J9",
+		"dH7RR0l6J9",
+		"cG7HH0l7J9",
+		"wH7DD0l3J9",
+		"tV7YY0l7J9",
+		"gI7MM0l7J9",
+		"aW9HH0l8J6",
+		"0Xc6LMYG8P",
+		"iH7PP0l7J9",
+		"iK7OO0l7J9",
+		"sU7XX0l7J9",
+		"nO7SS0l7J9",
+		"pR7UU0l7J9",
+		"oQ7TT0l7J9",
+		"rT7WW0l7J9",
+		"qS7VV0l7J9",
+		"bW7HH0l7J9",
+		"jtlIMO3qZM",
+		"7fuccf1Mx7",
+		"gjqMBn6pjz",
+		"XG0aXHpIEt",
+		"jEECYg2YVU",
+		"gfZAn3W7wl",
+		"dV84wpqRUs",
+		"keAhfbH5yb",
+		"dBkuNCvqn5",
+		"3Njm0DJQO9",
+		"pYW8UkYz2w",
+		"UUDvOa5r34",
+		"dYWBaXaaMM",
+		"jEhCtdJKOY",
+		"P1jhKWEmLa",
+		"dx3xfcdfMr",
+		"ru4xfcdfMr",
+		"ty3xfcdfMr",
+		"dx3xfbjfMr",
+		"dx8afcdfMr",
+		"hJ7NN0l7J9",
+		"lN7RR0l7J9",
+		"kM7QQ0l7J9",
+		"jL7PP0l7J9",
+	}
 )
 
 // NewSupportClient ...
@@ -47,27 +144,34 @@ func NewSupportClient() *SupportClientImpl {
 
 // RequestServiceLimitsRefreshLoop ...
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
-	input := &support.RefreshTrustedAdvisorCheckInput{
-		CheckId: aws.String(checkID),
-	}
+	var (
+		waitMs        int64
+		refreshStatus string
+	)
 
 	for {
-		glog.Infof("Refreshing Trusted Advisor check '%s'...", checkID)
-		output, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
-		if err != nil {
-			glog.Errorf("Error when requesting status refresh: %v", err)
-			continue
+		for _, checkID := range checkIDs {
+			input := &support.RefreshTrustedAdvisorCheckInput{
+				CheckId: aws.String(checkID),
+			}
+			glog.Infof("Refreshing Trusted Advisor check '%s'...", checkID)
+			output, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
+			if err != nil {
+				glog.Errorf("Error when requesting status refresh: %v", err)
+				continue
+			}
+
+			waitMs = *output.Status.MillisUntilNextRefreshable
+			refreshStatus = aws.StringValue(output.Status.Status)
 		}
-
-		waitMs := *output.Status.MillisUntilNextRefreshable
-
-		glog.Infof("Refresh status is '%s', waiting %dms until the next refresh...", aws.StringValue(output.Status.Status), waitMs)
+		glog.Infof("Refresh status is '%s', waiting %d minutes until the next refresh...", refreshStatus, waitMs/60000)
 		time.Sleep(time.Duration(waitMs) * time.Millisecond)
 	}
+
 }
 
 // DescribeServiceLimitsCheckResult ...
-func (client *SupportClientImpl) DescribeServiceLimitsCheckResult() (*support.TrustedAdvisorCheckResult, error) {
+func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error) {
 	input := &support.DescribeTrustedAdvisorCheckResultInput{
 		CheckId: aws.String(checkID),
 	}
@@ -98,56 +202,58 @@ func (e *SupportExporter) RequestServiceLimitsRefreshLoop() {
 
 // Describe ...
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
-	result, err := e.supportClient.DescribeServiceLimitsCheckResult()
-	if err != nil {
-		glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
-	}
-
-	for _, resource := range result.FlaggedResources {
-		resourceID := aws.StringValue(resource.ResourceId)
-
-		// Sanity check in order not to report the same metric more than once
-		if _, ok := e.metricsUsed[resourceID]; ok {
-			continue
+	for _, checkID := range checkIDs {
+		result, err := e.supportClient.DescribeServiceLimitsCheckResult(checkID)
+		if err != nil {
+			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
 		}
 
-		serviceName := aws.StringValue(resource.Metadata[1])
-		serviceNameLower := strings.ToLower(serviceName)
-		glog.Infof("Refreshing Trusted Advisor check '%s'...", aws.StringValue(resource.Metadata[0]))
-		// if aws.StringValue(resource.Region) == e.region {
-		e.metricsUsed[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
-		e.metricsLimit[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
+		for _, resource := range result.FlaggedResources {
+			resourceID := aws.StringValue(resource.ResourceId)
 
-		ch <- e.metricsUsed[resourceID]
-		ch <- e.metricsLimit[resourceID]
-		// }
+			// Sanity check in order not to report the same metric more than once
+			if _, ok := e.metricsUsed[resourceID]; ok {
+				continue
+			}
+
+			serviceName := aws.StringValue(resource.Metadata[1])
+			serviceNameLower := strings.ToLower(serviceName)
+			glog.Infof("Updating Data,     Region: '%s', Service Name: '%s'", aws.StringValue(resource.Metadata[0]), serviceName)
+			e.metricsUsed[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
+			e.metricsLimit[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
+
+			ch <- e.metricsUsed[resourceID]
+			ch <- e.metricsLimit[resourceID]
+		}
 	}
 }
 
 // Collect ...
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
-	result, err := e.supportClient.DescribeServiceLimitsCheckResult()
-	if err != nil {
-		glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
-	}
-
-	for _, resource := range result.FlaggedResources {
-		resourceID := aws.StringValue(resource.ResourceId)
-
-		// Sanity check in order not to report the same metric more than once
-		metricUsed, ok := e.metricsUsed[resourceID]
-		if !ok {
-			continue
+	for _, checkID := range checkIDs {
+		result, err := e.supportClient.DescribeServiceLimitsCheckResult(checkID)
+		if err != nil {
+			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
 		}
 
-		resourceName := aws.StringValue(resource.Metadata[2])
+		for _, resource := range result.FlaggedResources {
+			resourceID := aws.StringValue(resource.ResourceId)
 
-		metricLimit := e.metricsLimit[resourceID]
-		limitValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[3]), 64)
-		ch <- prometheus.MustNewConstMetric(metricLimit, prometheus.GaugeValue, limitValue, resourceName)
+			// Sanity check in order not to report the same metric more than once
+			metricUsed, ok := e.metricsUsed[resourceID]
+			if !ok {
+				continue
+			}
 
-		usedValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[4]), 64)
-		ch <- prometheus.MustNewConstMetric(metricUsed, prometheus.GaugeValue, usedValue, resourceName)
+			resourceName := aws.StringValue(resource.Metadata[2])
+
+			metricLimit := e.metricsLimit[resourceID]
+			limitValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[3]), 64)
+			ch <- prometheus.MustNewConstMetric(metricLimit, prometheus.GaugeValue, limitValue, resourceName)
+
+			usedValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[4]), 64)
+			ch <- prometheus.MustNewConstMetric(metricUsed, prometheus.GaugeValue, usedValue, resourceName)
+		}
 	}
 }
 
