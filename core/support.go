@@ -145,7 +145,7 @@ func NewSupportClient() *SupportClientImpl {
 // RequestServiceLimitsRefreshLoop ...
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	var (
-		waitMs        int64
+		waitMs        int64 = 3600000
 		refreshStatus string
 	)
 
@@ -161,7 +161,6 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				continue
 			}
 
-			waitMs = *output.Status.MillisUntilNextRefreshable
 			refreshStatus = aws.StringValue(output.Status.Status)
 		}
 		glog.Infof("Refresh status is '%s', waiting %d minutes until the next refresh...", refreshStatus, waitMs/60000)
@@ -218,7 +217,6 @@ func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 
 			serviceName := aws.StringValue(resource.Metadata[1])
 			serviceNameLower := strings.ToLower(serviceName)
-			glog.Infof("Updating Data,     Region: '%s', Service Name: '%s'", aws.StringValue(resource.Metadata[0]), serviceName)
 			e.metricsUsed[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
 			e.metricsLimit[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
 
