@@ -2,10 +2,10 @@
 export GOBIN := $(PWD)/bin
 export PATH := $(GOBIN):$(PATH)
 export INSTALL_FLAG=
-export TAG=0.1.4
+export TAG=0.2.0
 
 DOCKER_IMAGE = aws-limits-exporter
-DOCKER_REPO = "objectrocket/"
+DOCKER_REPO = danielfm/
 
 # Determine which OS.
 OS?=$(shell uname -s | tr A-Z a-z)
@@ -39,6 +39,6 @@ docker-build:
 	docker build -t ${DOCKER_REPO}$(DOCKER_IMAGE):latest .
 
 docker-deploy:
-	docker tag ${DOCKER_REPO}$(DOCKER_IMAGE):latest ${DOCKER_REPO}$(DOCKER_IMAGE):$(DOCKER_TAG)
-	docker push ${DOCKER_REPO}$(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker tag ${DOCKER_REPO}$(DOCKER_IMAGE):latest ${DOCKER_REPO}$(DOCKER_IMAGE):$(TAG)
+	docker push ${DOCKER_REPO}$(DOCKER_IMAGE):$(TAG)
 	docker push ${DOCKER_REPO}$(DOCKER_IMAGE):latest
