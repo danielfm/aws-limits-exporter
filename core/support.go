@@ -145,8 +145,7 @@ func NewSupportClient() *SupportClientImpl {
 // RequestServiceLimitsRefreshLoop ...
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	var (
-		waitMs        int64 = 3600000
-		refreshStatus string
+		waitMs int64 = 3600000
 	)
 
 	for {
@@ -155,15 +154,13 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				CheckId: aws.String(checkID),
 			}
 			glog.Infof("Refreshing Trusted Advisor check '%s'...", checkID)
-			output, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
+			_, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
 			if err != nil {
 				glog.Errorf("Error when requesting status refresh: %v", err)
 				continue
 			}
-
-			refreshStatus = aws.StringValue(output.Status.Status)
 		}
-		glog.Infof("Refresh status is '%s', waiting %d minutes until the next refresh...", refreshStatus, waitMs/60000)
+		glog.Infof("Waiting %d minutes until the next refresh...", waitMs/60000)
 		time.Sleep(time.Duration(waitMs) * time.Millisecond)
 	}
 
