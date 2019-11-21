@@ -5,7 +5,7 @@ export INSTALL_FLAG=
 export TAG=0.2.0
 
 DOCKER_IMAGE = aws-limits-exporter
-DOCKER_REPO = danielfm/
+DOCKER_REPO = danielfm
 
 # Determine which OS.
 OS?=$(shell uname -s | tr A-Z a-z)
@@ -36,9 +36,9 @@ clean:
 	@go clean
 
 docker-build:
-	docker build -t ${DOCKER_REPO}$(DOCKER_IMAGE):latest .
+	docker build -t ${DOCKER_REPO}/$(DOCKER_IMAGE):latest .
 
 docker-deploy:
-	docker tag ${DOCKER_REPO}$(DOCKER_IMAGE):latest ${DOCKER_REPO}$(DOCKER_IMAGE):$(TAG)
-	docker push ${DOCKER_REPO}$(DOCKER_IMAGE):$(TAG)
-	docker push ${DOCKER_REPO}$(DOCKER_IMAGE):latest
+	docker tag ${DOCKER_REPO}/$(DOCKER_IMAGE):latest ${DOCKER_REPO}/$(DOCKER_IMAGE):$(TAG)
+	docker push ${DOCKER_REPO}/$(DOCKER_IMAGE):$(TAG)
+	docker push ${DOCKER_REPO}/$(DOCKER_IMAGE):latest
