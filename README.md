@@ -3,8 +3,6 @@
 This is a small Go server that provides a Prometheus metrics endpoint that
 exposes AWS usage and limits as reported by the AWS Trusted Advisor API.
 
-Checks are automatically refreshed according to the `MillisUntilNextRefreshable`
-field of [TrustedAdvisorCheckRefreshStatus](http://docs.aws.amazon.com/sdk-for-go/api/service/support/#TrustedAdvisorCheckRefreshStatus).
 
 ## Usage
 
@@ -59,8 +57,6 @@ Usage of ./bin/aws-limits-exporter:
         If non-empty, write log files in this directory
   -logtostderr
         log to standard error instead of files
-  -region string
-        Returns usage and limits for the given AWS Region. (default "us-east-1")
   -stderrthreshold value
         logs at or above this threshold go to stderr
   -v value
