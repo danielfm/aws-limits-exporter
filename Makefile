@@ -20,9 +20,6 @@ dep: dependencies
 run-server: build
 	$(GOBIN)/aws-limits-exporter
 
-run-linux: build
-	$(GOBIN)/aws-limits-exporter
-
 test:
 	@go test ./... -timeout 2m -v -race
 
