@@ -11,7 +11,7 @@ There are Docker images ready for use:
 ```bash
 # Start exporter container
 $ docker run -it --rm -p 8080:8080 -e AWS_ACCESS_KEY=<KEY> -e AWS_SECRET_ACCESS_KEY=<SECRET> \
-      danielfm/aws-limits-exporter:latest -logtostderr -region=<REGION>
+      danielfm/aws-limits-exporter:latest -logtostderr
 
 # Scrape metrics
 $ curl http://localhost:8080/metrics
