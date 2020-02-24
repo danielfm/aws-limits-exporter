@@ -16,7 +16,8 @@ var (
 	// VERSION set by build script
 	VERSION = "UNKNOWN"
 
-	addr = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
+	addr   = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
+	region = flag.String("region", "", "The region to show metrics for.")
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 
 	glog.Infof("AWS Limits Exporter v%s started.", VERSION)
 
-	exporter := core.NewSupportExporter()
+	exporter := core.NewSupportExporter(*region)
 	go exporter.RequestServiceLimitsRefreshLoop()
 
 	prometheus.Register(exporter)

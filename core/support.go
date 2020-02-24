@@ -181,11 +181,12 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 }
 
 // NewSupportExporter ...
-func NewSupportExporter() *SupportExporter {
+func NewSupportExporter(region string) *SupportExporter {
 	client := NewSupportClient()
 
 	return &SupportExporter{
 		supportClient: client,
+		metricsRegion: region,
 		metricsUsed:   map[string]*prometheus.Desc{},
 		metricsLimit:  map[string]*prometheus.Desc{},
 	}
