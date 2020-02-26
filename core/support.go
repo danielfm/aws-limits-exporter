@@ -192,6 +192,16 @@ func NewSupportExporter(region string) *SupportExporter {
 	}
 }
 
+// CheckMetricInRegion
+func (e *SupportExporter) validateMetricRegion(region string) bool {
+	if e.metricsRegion == "" {
+		return true
+	} else if e.metricsRegion == region {
+		return true
+	}
+	return false
+}
+
 // RequestServiceLimitsRefreshLoop ...
 func (e *SupportExporter) RequestServiceLimitsRefreshLoop() {
 	e.supportClient.RequestServiceLimitsRefreshLoop()
@@ -213,10 +223,18 @@ func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 				continue
 			}
 
+			region := aws.StringValue(resource.Metadata[0])
+
+			// Filter region
+			if !e.validateMetricRegion(region) {
+				continue
+			}
+
 			serviceName := aws.StringValue(resource.Metadata[1])
 			serviceNameLower := strings.ToLower(serviceName)
-			e.metricsUsed[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
-			e.metricsLimit[resourceID] = newServerMetric(aws.StringValue(resource.Metadata[0]), serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
+
+			e.metricsUsed[resourceID] = newServerMetric(region, serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
+			e.metricsLimit[resourceID] = newServerMetric(region, serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
 
 			ch <- e.metricsUsed[resourceID]
 			ch <- e.metricsLimit[resourceID]
@@ -238,6 +256,11 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 			// Sanity check in order not to report the same metric more than once
 			metricUsed, ok := e.metricsUsed[resourceID]
 			if !ok {
+				continue
+			}
+
+			// Filter region
+			if !e.validateMetricRegion(aws.StringValue(resource.Metadata[0])) {
 				continue
 			}
 
