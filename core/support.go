@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/golang/glog"
@@ -117,6 +118,21 @@ var (
 	}
 )
 
+// validateRegionName ...
+func validateRegionName(region string) {
+	if region != "" {
+		availableRegions := endpoints.AwsPartition().Regions()
+		if _, ok := availableRegions[region]; !ok {
+			regions := make([]string, 0, len(availableRegions))
+			for key := range availableRegions {
+				regions = append(regions, key)
+			}
+
+			glog.Fatalf("Invalid AWS region %s, valid regions: %s", region, strings.Join(regions, ","))
+		}
+	}
+}
+
 // NewSupportClient ...
 func NewSupportClient() *SupportClientImpl {
 	creds := credentials.NewChainCredentials(
@@ -182,6 +198,8 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 
 // NewSupportExporter ...
 func NewSupportExporter(region string) *SupportExporter {
+	validateRegionName(region)
+
 	client := NewSupportClient()
 
 	return &SupportExporter{
@@ -192,7 +210,7 @@ func NewSupportExporter(region string) *SupportExporter {
 	}
 }
 
-// CheckMetricInRegion
+// validateMetricRegion
 func (e *SupportExporter) validateMetricRegion(region string) bool {
 	if e.metricsRegion == "" {
 		return true
