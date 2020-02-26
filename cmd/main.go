@@ -17,7 +17,7 @@ var (
 	VERSION = "UNKNOWN"
 
 	addr   = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
-	region = flag.String("region", "", "The region to show metrics for.")
+	region = flag.String("region", "", "The AWS region to show metrics for (default all regions).")
 )
 
 func main() {

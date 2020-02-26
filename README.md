@@ -57,6 +57,8 @@ Usage of ./bin/aws-limits-exporter:
         If non-empty, write log files in this directory
   -logtostderr
         log to standard error instead of files
+  -region string
+        The AWS region to show metrics for (default all regions).
   -stderrthreshold value
         logs at or above this threshold go to stderr
   -v value
