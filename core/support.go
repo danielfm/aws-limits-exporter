@@ -266,6 +266,7 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 		result, err := e.supportClient.DescribeServiceLimitsCheckResult(checkID)
 		if err != nil {
 			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
+			continue
 		}
 
 		for _, resource := range result.FlaggedResources {
