@@ -23,7 +23,6 @@ import (
 // DynamoDB Read Capacity		6gtQddfEw6
 // DynamoDB Write Capacity 	c5ftjdfkMr
 // EBS - Active Snapshots		eI7KK0l7J9
-// EBS - Active Volumes		fH7LL0l7J9
 // EBS - Cold HDD (sc1) 	gH5CC0e3J9
 // EBS - General Purpose SSD Volume Storage		dH7RR0l6J9
 // EBS - Magnetic (standard) Volume Storage		cG7HH0l7J9
@@ -73,7 +72,6 @@ var (
 		"6gtQddfEw6",
 		"c5ftjdfkMr",
 		"eI7KK0l7J9",
-		"fH7LL0l7J9",
 		"gH5CC0e3J9",
 		"dH7RR0l6J9",
 		"cG7HH0l7J9",
