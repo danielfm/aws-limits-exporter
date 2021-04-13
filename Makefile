@@ -2,7 +2,7 @@
 export GOBIN := $(PWD)/bin
 export PATH := $(GOBIN):$(PATH)
 export INSTALL_FLAG=
-export TAG=0.3.2
+export TAG=0.4.0
 
 DOCKER_IMAGE = aws-limits-exporter
 DOCKER_REPO = danielfm
