@@ -6,9 +6,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/support"
@@ -133,23 +130,16 @@ func validateRegionName(region string) {
 
 // NewSupportClient ...
 func NewSupportClient() *SupportClientImpl {
-	creds := credentials.NewChainCredentials(
-		[]credentials.Provider{
-			&credentials.EnvProvider{},
-			&credentials.SharedCredentialsProvider{},
-			&ec2rolecreds.EC2RoleProvider{
-				Client: ec2metadata.New(session.Must(session.NewSession())),
-			},
-		})
-
 	awsConfig := aws.NewConfig()
-	awsConfig.WithCredentials(creds)
 
 	// Trusted Advisor API does not work in every region, but we can use it
 	// via the `us-east-1` region to get data from other regions
 	awsConfig.WithRegion("us-east-1")
 
-	sess := session.New(awsConfig)
+	sess, err := session.NewSession(awsConfig)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	return &SupportClientImpl{
 		SupportClient: support.New(sess),
