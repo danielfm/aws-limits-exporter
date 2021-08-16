@@ -30,6 +30,8 @@ import (
 // EC2 - On-Demand Instances		0Xc6LMYG8P
 // EC2 - Reserved Instance Leases		iH7PP0l7J9
 // ELB - Active Load Balancers		iK7OO0l7J9
+// ELB - Application Load Balancers     EM8b3yLRTr
+// ELB - Network Load Balancers         8wIqYSt25K
 // IAM - Group		sU7XX0l7J9
 // IAM - Instance Profiles		nO7SS0l7J9
 // IAM - Policies		pR7UU0l7J9
@@ -78,6 +80,8 @@ var (
 		"aW9HH0l8J6",
 		"0Xc6LMYG8P",
 		"iH7PP0l7J9",
+		"EM8b3yLRTr",
+		"8wIqYSt25K",
 		"iK7OO0l7J9",
 		"sU7XX0l7J9",
 		"nO7SS0l7J9",
