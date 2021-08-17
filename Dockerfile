@@ -7,7 +7,7 @@ WORKDIR $REPO_PATH
 RUN make build
 
 # final stage
-FROM alpine
+FROM alpine:3.14
 LABEL maintainer="Daniel Martins <daniel.martins@jusbrasil.com.br>"
 WORKDIR /app
 COPY --from=build-env /build/bin/aws-limits-exporter /app/
