@@ -31,5 +31,11 @@ func main() {
 	prometheus.Register(exporter)
 
 	http.Handle("/metrics", promhttp.Handler())
+	http.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	glog.Infof("Server listening on %s", *addr)
 	glog.Fatal(http.ListenAndServe(*addr, nil))
 }
