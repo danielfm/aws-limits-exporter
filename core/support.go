@@ -290,6 +290,9 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 func newServerMetric(region, subSystem, metricName, docString string, labels []string) *prometheus.Desc {
 	return prometheus.NewDesc(
 		prometheus.BuildFQName("aws", subSystem, metricName),
-		docString, labels, prometheus.Labels{"region": region},
+		docString, labels, prometheus.Labels{
+			"region": region,
+			"aws_service": subSystem,
+		},
 	)
 }
