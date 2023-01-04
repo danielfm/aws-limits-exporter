@@ -1,8 +1,11 @@
 .PHONY: test
+
+DOCKER_BIN := podman
+
 export GOBIN := $(PWD)/bin
 export PATH := $(GOBIN):$(PATH)
 export INSTALL_FLAG=
-export TAG=0.6.0
+export TAG=0.7.0
 
 DOCKER_IMAGE = aws-limits-exporter
 DOCKER_REPO = danielfm
@@ -33,9 +36,9 @@ clean:
 	@go clean
 
 docker-build:
-	docker build -t ${DOCKER_REPO}/$(DOCKER_IMAGE):latest .
+	$(DOCKER_BIN) build -t ${DOCKER_REPO}/$(DOCKER_IMAGE):latest .
 
 docker-deploy:
-	docker tag ${DOCKER_REPO}/$(DOCKER_IMAGE):latest ${DOCKER_REPO}/$(DOCKER_IMAGE):$(TAG)
-	docker push ${DOCKER_REPO}/$(DOCKER_IMAGE):$(TAG)
-	docker push ${DOCKER_REPO}/$(DOCKER_IMAGE):latest
+	$(DOCKER_BIN) tag ${DOCKER_REPO}/$(DOCKER_IMAGE):latest ${DOCKER_REPO}/$(DOCKER_IMAGE):$(TAG)
+	$(DOCKER_BIN) push ${DOCKER_REPO}/$(DOCKER_IMAGE):$(TAG)
+	$(DOCKER_BIN) push ${DOCKER_REPO}/$(DOCKER_IMAGE):latest
