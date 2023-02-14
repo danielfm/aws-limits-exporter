@@ -3,7 +3,7 @@ module github.com/danielfm/aws-limits-exporter
 go 1.19
 
 require (
-	github.com/aws/aws-sdk-go v1.33.0
+	github.com/aws/aws-sdk-go v1.34.0
 	github.com/golang/glog v1.0.0
 	github.com/prometheus/client_golang v1.14.0
 )
