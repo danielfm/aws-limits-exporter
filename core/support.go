@@ -120,14 +120,27 @@ var (
 // validateRegionName ...
 func validateRegionName(region string) {
 	if region != "" {
-		availableRegions := endpoints.AwsPartition().Regions()
-		if _, ok := availableRegions[region]; !ok {
-			regions := make([]string, 0, len(availableRegions))
-			for key := range availableRegions {
-				regions = append(regions, key)
-			}
+		var partition endpoints.Partition
+		partitions := endpoints.DefaultPartitions()
 
-			glog.Fatalf("Invalid AWS region %s, valid regions: %s", region, strings.Join(regions, ","))
+		found := false
+		for _, p := range partitions {
+			if _, ok := p.Regions()[region]; ok {
+				partition = p
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			// If region is not found in any partition
+			validRegions := []string{}
+			for _, p := range partitions {
+				for r := range p.Regions() {
+					validRegions = append(validRegions, r)
+				}
+			}
+			glog.Fatalf("Invalid AWS region %s, valid regions: %s", region, strings.Join(validRegions, ", "))
 		}
 	}
 }
