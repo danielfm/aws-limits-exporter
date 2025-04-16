@@ -133,13 +133,13 @@ func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect sends metric values to Prometheus
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
-	checkIDs, err := e.supportClient.GetAvailableCheckIDs()
+	checkIDs, err := e.SupportClient.GetAvailableCheckIDs()
 	if err != nil {
 		glog.Errorf("Failed to get available Trusted Advisor checks: %v", err)
 		return
 	}
 	for _, checkID := range checkIDs {
-		result, err := e.supportClient.DescribeServiceLimitsCheckResult(checkID)
+		result, err := e.SupportClient.DescribeServiceLimitsCheckResult(checkID)
 		if err != nil {
 			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
 			continue
