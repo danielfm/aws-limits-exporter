@@ -119,7 +119,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 // NewSupportExporter creates a new exporter for the given region
 func NewSupportExporter(region string) *SupportExporter {
 	return &SupportExporter{
-		supportClient: NewSupportClient(region),
+		SupportClient: NewSupportClient(region),
 		metricsRegion: region,
 		metricsUsed:   make(map[string]*prometheus.Desc),
 		metricsLimit:  make(map[string]*prometheus.Desc),

@@ -22,7 +22,7 @@ func main() {
 	glog.Infof("AWS Limits Exporter v%s started.", VERSION)
 
 	exporter := core.NewSupportExporter(*region)
-	go exporter.supportClient.RequestServiceLimitsRefreshLoop()
+	go exporter.SupportClient.RequestServiceLimitsRefreshLoop()
 
 	prometheus.MustRegister(exporter)
 
