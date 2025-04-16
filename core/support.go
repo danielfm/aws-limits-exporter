@@ -120,13 +120,11 @@ var (
 // validateRegionName ...
 func validateRegionName(region string) {
 	if region != "" {
-		var partition endpoints.Partition
 		partitions := endpoints.DefaultPartitions()
 
 		found := false
 		for _, p := range partitions {
 			if _, ok := p.Regions()[region]; ok {
-				partition = p
 				found = true
 				break
 			}
@@ -304,7 +302,7 @@ func newServerMetric(region, subSystem, metricName, docString string, labels []s
 	return prometheus.NewDesc(
 		prometheus.BuildFQName("aws", subSystem, metricName),
 		docString, labels, prometheus.Labels{
-			"region": region,
+			"region":      region,
 			"aws_service": subSystem,
 		},
 	)
