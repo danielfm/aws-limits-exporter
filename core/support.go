@@ -98,16 +98,32 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				aws.Int64Value(result.ResourcesSummary.ResourcesFlagged),
 				aws.Int64Value(result.ResourcesSummary.ResourcesProcessed),
 			)
+
+			if result.FlaggedResources == nil {
+				glog.Infof("No FlaggedResources for check: %s", checkID)
+				continue
+			}
 			for i, res := range result.FlaggedResources {
 				if i >= 5 {
 					glog.Infof("...only showing first 5 flagged resources")
 					break
 				}
+				// Defensive: Metadata slice and pointers must be valid
+				var metadataStrs []string
+				if res.Metadata != nil {
+					for _, m := range res.Metadata {
+						if m != nil {
+							metadataStrs = append(metadataStrs, *m)
+						} else {
+							metadataStrs = append(metadataStrs, "<nil>")
+						}
+					}
+				}
 				glog.Infof("  Resource[%d]: Region=%s | Status=%s | Metadata=%v",
 					i,
 					aws.StringValue(res.Region),
 					aws.StringValue(res.Status),
-					res.Metadata,
+					metadataStrs,
 				)
 			}
 		}
