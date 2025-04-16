@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -120,18 +119,18 @@ var (
 
 func validateRegionName(region string) {
 	if region != "" {
-		fmt.Printf("[DEBUG] Validating region: %s\n", region)
+		glog.Infof("Validating region: %s", region)
 
 		partitions := endpoints.DefaultPartitions()
 		found := false
 
 		for _, p := range partitions {
 			if _, ok := p.Regions()[region]; ok {
-				fmt.Printf("[DEBUG] Region %s found in partition: %s\n", region, p.ID())
+				glog.Infof("Region %s found in partition: %s", region, p.ID())
 				found = true
 				break
 			} else {
-				fmt.Printf("[DEBUG] Region %s not in partition: %s\n", region, p.ID())
+				glog.Infof("Region %s not in partition: %s", region, p.ID())
 			}
 		}
 
@@ -142,10 +141,13 @@ func validateRegionName(region string) {
 					validRegions = append(validRegions, r)
 				}
 			}
-			fmt.Printf("[ERROR] Invalid AWS region: %s\n", region)
-			fmt.Printf("[ERROR] Valid regions: %s\n", strings.Join(validRegions, ", "))
+			glog.Errorf("Invalid AWS region: %s", region)
+			glog.Errorf("Valid regions: %s", strings.Join(validRegions, ", "))
+			glog.Flush() // force flush before fatal
 			glog.Fatalf("Invalid AWS region %s", region)
 		}
+
+		glog.Flush() // flush non-fatal logs too
 	}
 }
 
