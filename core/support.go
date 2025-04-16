@@ -241,7 +241,7 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 func NewSupportExporter(region string) *SupportExporter {
 	validateRegionName(region)
 
-	client := NewSupportClient()
+	client := NewSupportClient(region)
 
 	return &SupportExporter{
 		supportClient: client,
