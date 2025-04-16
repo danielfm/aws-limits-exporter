@@ -152,20 +152,15 @@ func validateRegionName(region string) {
 }
 
 // NewSupportClient ...
-func NewSupportClient() *SupportClientImpl {
-	awsConfig := aws.NewConfig()
-
-	// Trusted Advisor API does not work in every region, but we can use it
-	// via the `us-east-1` region to get data from other regions
-	awsConfig.WithRegion("us-east-1")
-
+func NewSupportClient(region string) *SupportClientImpl {
+	awsConfig := aws.NewConfig().WithRegion(region)
 	sess, err := session.NewSession(awsConfig)
 	if err != nil {
 		glog.Fatal(err)
 	}
-
 	return &SupportClientImpl{
 		SupportClient: support.New(sess),
+		Region:        region,
 	}
 }
 
@@ -175,7 +170,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 		waitMs int64 = 3600000
 	)
 
-	region := aws.StringValue(client.SupportClient.Config.Region)
+	region := client.Region
 	glog.Infof("Starting Trusted Advisor refresh loop for region: %s", region)
 
 	for {

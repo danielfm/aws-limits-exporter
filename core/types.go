@@ -9,6 +9,7 @@ import (
 // SupportClientImpl ...
 type SupportClientImpl struct {
 	SupportClient supportiface.SupportAPI
+	Region        string
 }
 
 // SupportClient ...
