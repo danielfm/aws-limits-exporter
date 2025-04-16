@@ -200,7 +200,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 			glog.Infof("Check '%s' summary: Status: %s, FlaggedResources: %d, ResourcesProcessed: %d",
 				checkID,
 				aws.StringValue(result.Status),
-				aws.Int64Value(result.FlaggedResourcesSummary.FlaggedResources),
+				aws.Int64Value(result.ResourcesSummary.ResourcesFlagged),
 				aws.Int64Value(result.ResourcesSummary.ResourcesProcessed),
 			)
 
