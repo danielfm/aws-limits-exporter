@@ -1,28 +1,24 @@
-name: Build and Push Docker Image
+name: Build and Push to GHCR
 
 on:
   push:
-    branches:
-      - fix_regions
+    branches: [ fix_regions ] 
 
 jobs:
-  build-and-push:
+  docker:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Log in to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Build Docker image
-      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/aws-limits-exporter:${{ github.sha }} .
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}:latest .
 
-    - name: Push Docker image
-      run: docker push ${{ secrets.DOCKER_USERNAME }}/aws-limits-exporter:${{ github.sha }}
-
-    - name: Tag as latest (optional)
-      run: |
-        docker tag ${{ secrets.DOCKER_USERNAME }}/aws-limits-exporter:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/aws-limits-exporter:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/aws-limits-exporter:latest
+      - name: Push Docker image to GHCR
+        run: |
+          docker push ghcr.io/${{ github.repository }}:latest
