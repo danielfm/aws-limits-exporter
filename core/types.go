@@ -16,6 +16,7 @@ type SupportClientImpl struct {
 type SupportClient interface {
 	RequestServiceLimitsRefreshLoop()
 	DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error)
+	GetAvailableCheckIDs() ([]string, error)
 }
 
 // SupportExporter ...

@@ -149,13 +149,13 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 		for _, res := range result.FlaggedResources {
-			if len(res.Metadata) < 3 {
-				glog.Warningf("Resource metadata too short for check %s: %v", checkID, res.Metadata)
+			if len(res.Metadata) < 3 || res.Metadata[0] == nil || res.Metadata[1] == nil || res.Metadata[2] == nil {
+				glog.Warningf("Resource metadata too short or nil for check %s: %v", checkID, res.Metadata)
 				continue
 			}
-			resourceName := res.Metadata[0]
-			usedStr := res.Metadata[1]
-			limitStr := res.Metadata[2]
+			resourceName := *res.Metadata[0]
+			usedStr := *res.Metadata[1]
+			limitStr := *res.Metadata[2]
 			used, err1 := parseFloat(usedStr)
 			limit, err2 := parseFloat(limitStr)
 			if err1 != nil || err2 != nil {
