@@ -175,22 +175,57 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 		waitMs int64 = 3600000
 	)
 
+	region := aws.StringValue(client.SupportClient.Config.Region)
+	glog.Infof("Starting Trusted Advisor refresh loop for region: %s", region)
+
 	for {
 		for _, checkID := range checkIDs {
+			glog.Infof("Refreshing Trusted Advisor check '%s' in region: %s", checkID, region)
+
 			input := &support.RefreshTrustedAdvisorCheckInput{
 				CheckId: aws.String(checkID),
 			}
-			glog.Infof("Refreshing Trusted Advisor check '%s'...", checkID)
+
 			_, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
 			if err != nil {
-				glog.Errorf("Error when requesting status refresh: %v", err)
+				glog.Errorf("Error when requesting status refresh for check '%s': %v", checkID, err)
 				continue
 			}
+
+			// Get the check result immediately after refreshing
+			resultOutput, err := client.SupportClient.DescribeTrustedAdvisorCheckResult(&support.DescribeTrustedAdvisorCheckResultInput{
+				CheckId: aws.String(checkID),
+			})
+			if err != nil {
+				glog.Errorf("Failed to get check result for '%s': %v", checkID, err)
+				continue
+			}
+
+			result := resultOutput.Result
+			glog.Infof("Check '%s' summary: Status: %s, FlaggedResources: %d, ResourcesProcessed: %d",
+				checkID,
+				aws.StringValue(result.Status),
+				aws.Int64Value(result.FlaggedResourcesSummary.FlaggedResources),
+				aws.Int64Value(result.ResourcesSummary.ResourcesProcessed),
+			)
+
+			for i, res := range result.FlaggedResources {
+				if i >= 5 {
+					glog.Infof("...only showing first 5 flagged resources")
+					break
+				}
+				glog.Infof("  Resource[%d]: Region=%s | Status=%s | Metadata=%v",
+					i,
+					aws.StringValue(res.Region),
+					aws.StringValue(res.Status),
+					res.Metadata,
+				)
+			}
 		}
+
 		glog.Infof("Waiting %d minutes until the next refresh...", waitMs/60000)
 		time.Sleep(time.Duration(waitMs) * time.Millisecond)
 	}
-
 }
 
 // DescribeServiceLimitsCheckResult ...
