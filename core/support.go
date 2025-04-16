@@ -1,157 +1,19 @@
 package core
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Service limits check
-// Auto Scaling - Groups		fW7HH0l7J9
-// Auto Scaling - Launch Configurations		aW7HH0l7J9
-// CloudFormation - Stacks		gW7HH0l7J9
-// DynamoDB Read Capacity		6gtQddfEw6
-// DynamoDB Write Capacity 	c5ftjdfkMr
-// EBS - Active Snapshots		eI7KK0l7J9
-// EBS - Cold HDD (sc1) 	gH5CC0e3J9
-// EBS - General Purpose SSD Volume Storage		dH7RR0l6J9
-// EBS - Magnetic (standard) Volume Storage		cG7HH0l7J9
-// EBS Throughput Optimized HDD (st1)		wH7DD0l3J9
-// EBS - Provisioned IOPS (SSD) Volume Aggregate IOPS		tV7YY0l7J9
-// EBS - Provisioned IOPS SSD (io1) Volume Storage		gI7MM0l7J9
-// EC2 - Elastic IP Addresses		aW9HH0l8J6
-// EC2 - On-Demand Instances		0Xc6LMYG8P
-// EC2 - Reserved Instance Leases		iH7PP0l7J9
-// ELB - Active Load Balancers		iK7OO0l7J9
-// ELB - Application Load Balancers     EM8b3yLRTr
-// ELB - Network Load Balancers         8wIqYSt25K
-// IAM - Group		sU7XX0l7J9
-// IAM - Instance Profiles		nO7SS0l7J9
-// IAM - Policies		pR7UU0l7J9
-// IAM - Roles		oQ7TT0l7J9
-// IAM - Server Certificates		rT7WW0l7J9
-// IAM - Users		qS7VV0l7J9
-// Kinesis - Shards per Region		bW7HH0l7J9
-// RDS - Cluster Parameter Groups		jtlIMO3qZM
-// RDS - Cluster roles		7fuccf1Mx7
-// RDS - Clusters		gjqMBn6pjz
-// RDS - DB Instances		XG0aXHpIEt
-// RDS - DB Parameter Groups		jEECYg2YVU
-// RDS - DB Security Groups		gfZAn3W7wl
-// RDS - DB snapshots per user		dV84wpqRUs
-// RDS - Event Subscriptions		keAhfbH5yb
-// RDS - Max Auths per Security Group		dBkuNCvqn5
-// RDS - Option Groups		3Njm0DJQO9
-// RDS - Read Replicas per Master		pYW8UkYz2w
-// RDS - Reserved Instances		UUDvOa5r34
-// RDS - Subnet Groups		dYWBaXaaMM
-// RDS - Subnets per Subnet Group		jEhCtdJKOY
-// RDS - Total Storage Quota		P1jhKWEmLa
-// Route 53 Hosted Zones		dx3xfcdfMr
-// Route 53 Max Health Checks		ru4xfcdfMr
-// Route 53 Reusable Delegation Sets		ty3xfcdfMr
-// Route 53 Traffic Policies		dx3xfbjfMr
-// Route 53 Traffic Policy Instances		dx8afcdfMr
-// SES - Daily Sending Quota		hJ7NN0l7J9
-// VPC - Elastic IP Address		lN7RR0l7J9
-// VPC - Internet Gateways		kM7QQ0l7J9
-// VPC - Network Interfaces		jL7PP0l7J9
-var (
-	checkIDs = []string{
-		"fW7HH0l7J9",
-		"aW7HH0l7J9",
-		"gW7HH0l7J9",
-		"6gtQddfEw6",
-		"c5ftjdfkMr",
-		"eI7KK0l7J9",
-		"gH5CC0e3J9",
-		"dH7RR0l6J9",
-		"cG7HH0l7J9",
-		"wH7DD0l3J9",
-		"tV7YY0l7J9",
-		"gI7MM0l7J9",
-		"aW9HH0l8J6",
-		"0Xc6LMYG8P",
-		"iH7PP0l7J9",
-		"EM8b3yLRTr",
-		"8wIqYSt25K",
-		"iK7OO0l7J9",
-		"sU7XX0l7J9",
-		"nO7SS0l7J9",
-		"pR7UU0l7J9",
-		"oQ7TT0l7J9",
-		"rT7WW0l7J9",
-		"qS7VV0l7J9",
-		"bW7HH0l7J9",
-		"jtlIMO3qZM",
-		"7fuccf1Mx7",
-		"gjqMBn6pjz",
-		"XG0aXHpIEt",
-		"jEECYg2YVU",
-		"gfZAn3W7wl",
-		"dV84wpqRUs",
-		"keAhfbH5yb",
-		"dBkuNCvqn5",
-		"3Njm0DJQO9",
-		"pYW8UkYz2w",
-		"UUDvOa5r34",
-		"dYWBaXaaMM",
-		"jEhCtdJKOY",
-		"P1jhKWEmLa",
-		"dx3xfcdfMr",
-		"ru4xfcdfMr",
-		"ty3xfcdfMr",
-		"dx3xfbjfMr",
-		"dx8afcdfMr",
-		"hJ7NN0l7J9",
-		"lN7RR0l7J9",
-		"kM7QQ0l7J9",
-		"jL7PP0l7J9",
-	}
-)
-
-func validateRegionName(region string) {
-	if region != "" {
-		glog.Infof("Validating region: %s", region)
-
-		partitions := endpoints.DefaultPartitions()
-		found := false
-
-		for _, p := range partitions {
-			if _, ok := p.Regions()[region]; ok {
-				glog.Infof("Region %s found in partition: %s", region, p.ID())
-				found = true
-				break
-			} else {
-				glog.Infof("Region %s not in partition: %s", region, p.ID())
-			}
-		}
-
-		if !found {
-			validRegions := []string{}
-			for _, p := range partitions {
-				for r := range p.Regions() {
-					validRegions = append(validRegions, r)
-				}
-			}
-			glog.Errorf("Invalid AWS region: %s", region)
-			glog.Errorf("Valid regions: %s", strings.Join(validRegions, ", "))
-			glog.Flush() // force flush before fatal
-			glog.Fatalf("Invalid AWS region %s", region)
-		}
-
-		glog.Flush() // flush non-fatal logs too
-	}
-}
-
-// NewSupportClient ...
+// NewSupportClient creates a new SupportClientImpl for the given region
 func NewSupportClient(region string) *SupportClientImpl {
 	awsConfig := aws.NewConfig().WithRegion(region)
 	sess, err := session.NewSession(awsConfig)
@@ -164,46 +26,78 @@ func NewSupportClient(region string) *SupportClientImpl {
 	}
 }
 
-// RequestServiceLimitsRefreshLoop ...
-func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
-	var (
-		waitMs int64 = 3600000
-	)
+// GetAvailableCheckIDs fetches all Trusted Advisor check IDs available in this partition/account
+func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
+	input := &support.DescribeTrustedAdvisorChecksInput{
+		Language: aws.String("en"),
+	}
+	output, err := client.SupportClient.DescribeTrustedAdvisorChecks(input)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(output.Checks))
+	for _, check := range output.Checks {
+		if check.Id != nil {
+			ids = append(ids, *check.Id)
+		}
+	}
+	return ids, nil
+}
 
+// DescribeServiceLimitsCheckResult fetches the result for a specific Trusted Advisor check
+func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error) {
+	input := &support.DescribeTrustedAdvisorCheckResultInput{
+		CheckId: aws.String(checkID),
+	}
+	output, err := client.SupportClient.DescribeTrustedAdvisorCheckResult(input)
+	if err != nil {
+		return nil, err
+	}
+	if output == nil || output.Result == nil {
+		return nil, nil
+	}
+	return output.Result, nil
+}
+
+// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks
+func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
+	var waitMs int64 = 3600000 // 1 hour
 	region := client.Region
 	glog.Infof("Starting Trusted Advisor refresh loop for region: %s", region)
 
 	for {
+		checkIDs, err := client.GetAvailableCheckIDs()
+		if err != nil {
+			glog.Errorf("Failed to get available Trusted Advisor checks: %v", err)
+			time.Sleep(time.Duration(waitMs) * time.Millisecond)
+			continue
+		}
 		for _, checkID := range checkIDs {
 			glog.Infof("Refreshing Trusted Advisor check '%s' in region: %s", checkID, region)
-
 			input := &support.RefreshTrustedAdvisorCheckInput{
 				CheckId: aws.String(checkID),
 			}
-
 			_, err := client.SupportClient.RefreshTrustedAdvisorCheck(input)
 			if err != nil {
 				glog.Errorf("Error when requesting status refresh for check '%s': %v", checkID, err)
 				continue
 			}
 
-			// Get the check result immediately after refreshing
-			resultOutput, err := client.SupportClient.DescribeTrustedAdvisorCheckResult(&support.DescribeTrustedAdvisorCheckResultInput{
-				CheckId: aws.String(checkID),
-			})
+			result, err := client.DescribeServiceLimitsCheckResult(checkID)
 			if err != nil {
 				glog.Errorf("Failed to get check result for '%s': %v", checkID, err)
 				continue
 			}
-
-			result := resultOutput.Result
+			if result == nil {
+				glog.Errorf("No result for check: %s", checkID)
+				continue
+			}
 			glog.Infof("Check '%s' summary: Status: %s, FlaggedResources: %d, ResourcesProcessed: %d",
 				checkID,
 				aws.StringValue(result.Status),
 				aws.Int64Value(result.ResourcesSummary.ResourcesFlagged),
 				aws.Int64Value(result.ResourcesSummary.ResourcesProcessed),
 			)
-
 			for i, res := range result.FlaggedResources {
 				if i >= 5 {
 					glog.Infof("...only showing first 5 flagged resources")
@@ -217,131 +111,103 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				)
 			}
 		}
-
 		glog.Infof("Waiting %d minutes until the next refresh...", waitMs/60000)
 		time.Sleep(time.Duration(waitMs) * time.Millisecond)
 	}
 }
 
-// DescribeServiceLimitsCheckResult ...
-func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error) {
-	input := &support.DescribeTrustedAdvisorCheckResultInput{
-		CheckId: aws.String(checkID),
-	}
-
-	output, err := client.SupportClient.DescribeTrustedAdvisorCheckResult(input)
-	if err != nil {
-		return nil, err
-	}
-
-	return output.Result, nil
-}
-
-// NewSupportExporter ...
+// NewSupportExporter creates a new exporter for the given region
 func NewSupportExporter(region string) *SupportExporter {
-	validateRegionName(region)
-
-	client := NewSupportClient(region)
-
 	return &SupportExporter{
-		supportClient: client,
+		supportClient: NewSupportClient(region),
 		metricsRegion: region,
-		metricsUsed:   map[string]*prometheus.Desc{},
-		metricsLimit:  map[string]*prometheus.Desc{},
+		metricsUsed:   make(map[string]*prometheus.Desc),
+		metricsLimit:  make(map[string]*prometheus.Desc),
 	}
 }
 
-// validateMetricRegion
-func (e *SupportExporter) validateMetricRegion(region string) bool {
-	if e.metricsRegion == "" {
-		return true
-	} else if e.metricsRegion == region {
-		return true
-	}
-	return false
-}
-
-// RequestServiceLimitsRefreshLoop ...
-func (e *SupportExporter) RequestServiceLimitsRefreshLoop() {
-	e.supportClient.RequestServiceLimitsRefreshLoop()
-}
-
-// Describe ...
+// Describe sends metric descriptors to Prometheus
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
-	for _, checkID := range checkIDs {
-		result, err := e.supportClient.DescribeServiceLimitsCheckResult(checkID)
-		if err != nil {
-			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
-		}
-
-		for _, resource := range result.FlaggedResources {
-			resourceID := aws.StringValue(resource.ResourceId)
-
-			// Sanity check in order not to report the same metric more than once
-			if _, ok := e.metricsUsed[resourceID]; ok {
-				continue
-			}
-
-			region := aws.StringValue(resource.Metadata[0])
-
-			// Filter region
-			if !e.validateMetricRegion(region) {
-				continue
-			}
-
-			serviceName := aws.StringValue(resource.Metadata[1])
-			serviceNameLower := strings.ToLower(serviceName)
-
-			e.metricsUsed[resourceID] = newServerMetric(region, serviceNameLower, "used_total", "Current used amount of the given resource.", []string{"resource"})
-			e.metricsLimit[resourceID] = newServerMetric(region, serviceNameLower, "limit_total", "Current limit of the given resource.", []string{"resource"})
-
-			ch <- e.metricsUsed[resourceID]
-			ch <- e.metricsLimit[resourceID]
-		}
-	}
+	// Dynamic metrics: nothing to send here
 }
 
-// Collect ...
+// Collect sends metric values to Prometheus
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
+	checkIDs, err := e.supportClient.GetAvailableCheckIDs()
+	if err != nil {
+		glog.Errorf("Failed to get available Trusted Advisor checks: %v", err)
+		return
+	}
 	for _, checkID := range checkIDs {
 		result, err := e.supportClient.DescribeServiceLimitsCheckResult(checkID)
 		if err != nil {
 			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
 			continue
 		}
-
-		for _, resource := range result.FlaggedResources {
-			resourceID := aws.StringValue(resource.ResourceId)
-
-			// Sanity check in order not to report the same metric more than once
-			metricUsed, ok := e.metricsUsed[resourceID]
-			if !ok {
+		if result == nil {
+			glog.Errorf("No result for check: %s", checkID)
+			continue
+		}
+		for _, res := range result.FlaggedResources {
+			if len(res.Metadata) < 3 {
+				glog.Warningf("Resource metadata too short for check %s: %v", checkID, res.Metadata)
 				continue
 			}
-
-			// Filter region
-			if !e.validateMetricRegion(aws.StringValue(resource.Metadata[0])) {
+			resourceName := res.Metadata[0]
+			usedStr := res.Metadata[1]
+			limitStr := res.Metadata[2]
+			used, err1 := parseFloat(usedStr)
+			limit, err2 := parseFloat(limitStr)
+			if err1 != nil || err2 != nil {
+				glog.Warningf("Cannot parse used/limit for check %s, resource %s: %v/%v", checkID, resourceName, err1, err2)
 				continue
 			}
+			serviceName := parseServiceNameFromCheck(result)
+			region := e.metricsRegion
 
-			resourceName := aws.StringValue(resource.Metadata[2])
-
-			metricLimit := e.metricsLimit[resourceID]
-			limitValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[3]), 64)
-			ch <- prometheus.MustNewConstMetric(metricLimit, prometheus.GaugeValue, limitValue, resourceName)
-
-			usedValue, _ := strconv.ParseFloat(aws.StringValue(resource.Metadata[4]), 64)
-			ch <- prometheus.MustNewConstMetric(metricUsed, prometheus.GaugeValue, usedValue, resourceName)
+			metricKey := fmt.Sprintf("%s_%s_%s", region, serviceName, resourceName)
+			if e.metricsUsed[metricKey] == nil {
+				e.metricsUsed[metricKey] = prometheus.NewDesc(
+					"aws_service_limit_used_total",
+					"Current used amount of the given AWS resource.",
+					[]string{"region", "service", "resource"}, nil,
+				)
+			}
+			if e.metricsLimit[metricKey] == nil {
+				e.metricsLimit[metricKey] = prometheus.NewDesc(
+					"aws_service_limit_limit_total",
+					"Current limit of the given AWS resource.",
+					[]string{"region", "service", "resource"}, nil,
+				)
+			}
+			ch <- prometheus.MustNewConstMetric(
+				e.metricsUsed[metricKey],
+				prometheus.GaugeValue,
+				used,
+				region, serviceName, resourceName,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				e.metricsLimit[metricKey],
+				prometheus.GaugeValue,
+				limit,
+				region, serviceName, resourceName,
+			)
 		}
 	}
 }
 
-func newServerMetric(region, subSystem, metricName, docString string, labels []string) *prometheus.Desc {
-	return prometheus.NewDesc(
-		prometheus.BuildFQName("aws", subSystem, metricName),
-		docString, labels, prometheus.Labels{
-			"region":      region,
-			"aws_service": subSystem,
-		},
-	)
+// parseFloat safely parses a string to float64, returns 0 on error
+func parseFloat(s string) (float64, error) {
+	s = strings.ReplaceAll(s, ",", "")
+	return strconv.ParseFloat(s, 64)
+}
+
+// parseServiceNameFromCheck tries to extract a service name from the check metadata/title
+func parseServiceNameFromCheck(result *support.TrustedAdvisorCheckResult) string {
+	// You may want to improve this logic for your environment
+	if result == nil || result.CheckId == nil {
+		return "unknown"
+	}
+	// Example: use check ID as a proxy for service, or parse from result.Category
+	return *result.CheckId
 }
