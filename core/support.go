@@ -26,7 +26,7 @@ func NewSupportClient(region string) *SupportClientImpl {
 	}
 }
 
-// GetAvailableCheckIDs fetches all Trusted Advisor check IDs available in this partition/account
+// GetAvailableCheckIDs fetches all Trusted Advisor check IDs available, optionally filtering for service_limits checks
 func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	input := &support.DescribeTrustedAdvisorChecksInput{
 		Language: aws.String("en"),
@@ -37,7 +37,8 @@ func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	}
 	ids := make([]string, 0, len(output.Checks))
 	for _, check := range output.Checks {
-		if check.Id != nil {
+		// Only collect service_limits checks for Prometheus metrics
+		if check.Id != nil && check.Category != nil && *check.Category == "service_limits" {
 			ids = append(ids, *check.Id)
 		}
 	}
@@ -59,7 +60,7 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 	return output.Result, nil
 }
 
-// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks
+// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks, with nil/length checks
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	var waitMs int64 = 3600000 // 1 hour
 	region := client.Region
@@ -89,7 +90,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				continue
 			}
 			if result == nil {
-				glog.Errorf("No result for check: %s", checkID)
+				glog.Warningf("No result for check: %s", checkID)
 				continue
 			}
 			glog.Infof("Check '%s' summary: Status: %s, FlaggedResources: %d, ResourcesProcessed: %d",
@@ -98,24 +99,19 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				aws.Int64Value(result.ResourcesSummary.ResourcesFlagged),
 				aws.Int64Value(result.ResourcesSummary.ResourcesProcessed),
 			)
-
 			if result.FlaggedResources == nil {
-				glog.Infof("No FlaggedResources for check: %s", checkID)
+				glog.Warningf("No FlaggedResources for check: %s", checkID)
 				continue
 			}
 			for i, res := range result.FlaggedResources {
-				if i >= 5 {
-					glog.Infof("...only showing first 5 flagged resources")
-					break
-				}
-				// Defensive: Metadata slice and pointers must be valid
-				var metadataStrs []string
+				// Defensive: don't panic on nil/short metadata
+				var meta []string
 				if res.Metadata != nil {
 					for _, m := range res.Metadata {
 						if m != nil {
-							metadataStrs = append(metadataStrs, *m)
+							meta = append(meta, *m)
 						} else {
-							metadataStrs = append(metadataStrs, "<nil>")
+							meta = append(meta, "<nil>")
 						}
 					}
 				}
@@ -123,8 +119,12 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 					i,
 					aws.StringValue(res.Region),
 					aws.StringValue(res.Status),
-					metadataStrs,
+					meta,
 				)
+				if i == 4 && len(result.FlaggedResources) > 5 {
+					glog.Infof("...only showing first 5 flagged resources")
+					break
+				}
 			}
 		}
 		glog.Infof("Waiting %d minutes until the next refresh...", waitMs/60000)
@@ -144,7 +144,7 @@ func NewSupportExporter(region string) *SupportExporter {
 
 // Describe sends metric descriptors to Prometheus
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
-	// Dynamic metrics: nothing to send here
+	// Dynamic metrics: nothing to describe here
 }
 
 // Collect sends metric values to Prometheus
@@ -160,13 +160,18 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 			glog.Errorf("Cannot retrieve Trusted Advisor check results data: %v", err)
 			continue
 		}
-		if result == nil {
-			glog.Errorf("No result for check: %s", checkID)
+		if result == nil || result.FlaggedResources == nil {
+			glog.Warningf("No flagged resources for check: %s", checkID)
 			continue
 		}
 		for _, res := range result.FlaggedResources {
-			if len(res.Metadata) < 3 || res.Metadata[0] == nil || res.Metadata[1] == nil || res.Metadata[2] == nil {
-				glog.Warningf("Resource metadata too short or nil for check %s: %v", checkID, res.Metadata)
+			// Check for minimum metadata length and nils
+			if res.Metadata == nil || len(res.Metadata) < 3 {
+				glog.Warningf("Resource metadata too short for check %s: %v", checkID, res.Metadata)
+				continue
+			}
+			if res.Metadata[0] == nil || res.Metadata[1] == nil || res.Metadata[2] == nil {
+				glog.Warningf("Resource metadata contains nil(s) for check %s: %v", checkID, res.Metadata)
 				continue
 			}
 			resourceName := *res.Metadata[0]
@@ -212,15 +217,14 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// parseFloat safely parses a string to float64, returns 0 on error
+// Helpers
 func parseFloat(s string) (float64, error) {
 	s = strings.ReplaceAll(s, ",", "")
 	return strconv.ParseFloat(s, 64)
 }
 
-// parseServiceNameFromCheck tries to extract a service name from the check metadata/title
 func parseServiceNameFromCheck(result *support.TrustedAdvisorCheckResult) string {
-	// You may want to improve this logic for your environment
+	// You can improve this logic for your environment
 	if result == nil || result.CheckId == nil {
 		return "unknown"
 	}
