@@ -206,23 +206,32 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				continue
 			}
 
-			resourceName := "-"
-			if len(res.Metadata) > 0 && res.Metadata[0] != nil {
-				resourceName = *res.Metadata[0]
+			// --- LABEL FIX: get region/service/resource from metadata[0],[1],[2]
+			regionLabel := "-"
+			serviceLabel := "-"
+			resourceLabel := "-"
+			if len(res.Metadata) > 2 {
+				if res.Metadata[0] != nil {
+					regionLabel = *res.Metadata[0]
+				}
+				if res.Metadata[1] != nil {
+					serviceLabel = *res.Metadata[1]
+				}
+				if res.Metadata[2] != nil {
+					resourceLabel = *res.Metadata[2]
+				}
 			}
 			usedStr := *res.Metadata[usedIdx]
 			limitStr := *res.Metadata[limitIdx]
 			used, err1 := parseFloat(usedStr)
 			limit, err2 := parseFloat(limitStr)
 			if err1 != nil || err2 != nil {
-				glog.Warningf("Cannot parse used/limit for check %s, resource %s: %v/%v", checkID, resourceName, err1, err2)
+				glog.Warningf("Cannot parse used/limit for check %s, resource %s/%s/%s: %v/%v", checkID, regionLabel, serviceLabel, resourceLabel, err1, err2)
 				continue
 			}
 
-			serviceName := parseServiceNameFromCheck(result)
-			region := e.metricsRegion
-
-			metricKey := fmt.Sprintf("%s_%s_%s", region, serviceName, resourceName)
+			// Build metric key so we don't create too many descriptors (optionally use all 3 labels)
+			metricKey := fmt.Sprintf("%s_%s_%s", regionLabel, serviceLabel, resourceLabel)
 			if e.metricsUsed[metricKey] == nil {
 				e.metricsUsed[metricKey] = prometheus.NewDesc(
 					"aws_service_limit_used_total",
@@ -241,13 +250,13 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				e.metricsUsed[metricKey],
 				prometheus.GaugeValue,
 				used,
-				region, serviceName, resourceName,
+				regionLabel, serviceLabel, resourceLabel,
 			)
 			ch <- prometheus.MustNewConstMetric(
 				e.metricsLimit[metricKey],
 				prometheus.GaugeValue,
 				limit,
-				region, serviceName, resourceName,
+				regionLabel, serviceLabel, resourceLabel,
 			)
 		}
 	}
@@ -258,6 +267,7 @@ func parseFloat(s string) (float64, error) {
 	return strconv.ParseFloat(s, 64)
 }
 
+// Optionally, you may no longer need CheckId as the label at all.
 func parseServiceNameFromCheck(result *support.TrustedAdvisorCheckResult) string {
 	if result == nil || result.CheckId == nil {
 		return "unknown"
