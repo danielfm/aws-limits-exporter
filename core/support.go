@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Create a new AWS Support client for the given region
 func NewSupportClient(region string) *SupportClientImpl {
 	awsConfig := aws.NewConfig().WithRegion(region)
 	sess, err := session.NewSession(awsConfig)
@@ -25,6 +26,7 @@ func NewSupportClient(region string) *SupportClientImpl {
 	}
 }
 
+// Returns all Trusted Advisor check IDs that are in the 'service_limits' category
 func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	input := &support.DescribeTrustedAdvisorChecksInput{
 		Language: aws.String("en"),
@@ -42,6 +44,7 @@ func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	return ids, nil
 }
 
+// Returns the result for an individual Trusted Advisor check
 func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error) {
 	input := &support.DescribeTrustedAdvisorCheckResultInput{
 		CheckId: aws.String(checkID),
@@ -56,8 +59,9 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 	return output.Result, nil
 }
 
+// Loops forever, actively refreshing all TA service_limits checks for the account/region
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
-	var waitMs int64 = 3600000 // 1 hour
+	var waitMs int64 = 3600000 // 1 hour between refreshes
 	region := client.Region
 	glog.Infof("Starting Trusted Advisor refresh loop for region: %s", region)
 
@@ -122,6 +126,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				if res.Status != nil {
 					statusVal = *res.Status
 				}
+				// Collect all metadata, replacing nils for logging
 				var meta []string
 				if res.Metadata != nil && len(res.Metadata) > 0 {
 					for _, m := range res.Metadata {
@@ -151,6 +156,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	}
 }
 
+// Constructs the Prometheus exporter
 func NewSupportExporter(region string) *SupportExporter {
 	return &SupportExporter{
 		SupportClient: NewSupportClient(region),
@@ -160,8 +166,10 @@ func NewSupportExporter(region string) *SupportExporter {
 	}
 }
 
+// Required Prometheus interface (dynamic metrics: nothing to describe here)
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {}
 
+// Main Prometheus collector for metrics
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	checkIDs, err := e.SupportClient.GetAvailableCheckIDs()
 	if err != nil {
@@ -206,7 +214,7 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				continue
 			}
 
-			// --- LABEL FIX: get region/service/resource from metadata[0],[1],[2]
+			// Extract region, service, and resource labels for Prometheus
 			regionLabel := "-"
 			serviceLabel := "-"
 			resourceLabel := "-"
@@ -221,6 +229,10 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 					resourceLabel = *res.Metadata[2]
 				}
 			}
+			// Treat global (non-region) resources more clearly
+			if regionLabel == "-" {
+				regionLabel = "global"
+			}
 			usedStr := *res.Metadata[usedIdx]
 			limitStr := *res.Metadata[limitIdx]
 			used, err1 := parseFloat(usedStr)
@@ -230,7 +242,7 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				continue
 			}
 
-			// Build metric key so we don't create too many descriptors (optionally use all 3 labels)
+			// Build a key to avoid redundant Prometheus descriptors for each label set
 			metricKey := fmt.Sprintf("%s_%s_%s", regionLabel, serviceLabel, resourceLabel)
 			if e.metricsUsed[metricKey] == nil {
 				e.metricsUsed[metricKey] = prometheus.NewDesc(
@@ -262,12 +274,13 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+// Helper: makes parsing numeric fields robust against commas and missing fields
 func parseFloat(s string) (float64, error) {
 	s = strings.ReplaceAll(s, ",", "")
 	return strconv.ParseFloat(s, 64)
 }
 
-// Optionally, you may no longer need CheckId as the label at all.
+// Not used in metric output, but available if needed for legacy keys
 func parseServiceNameFromCheck(result *support.TrustedAdvisorCheckResult) string {
 	if result == nil || result.CheckId == nil {
 		return "unknown"
