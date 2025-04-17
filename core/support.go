@@ -129,11 +129,11 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				// Collect all metadata, replacing nils for logging
 				var meta []string
 				if res.Metadata != nil && len(res.Metadata) > 0 {
-					for _, m := range res.Metadata {
+					for idx, m := range res.Metadata {
 						if m != nil {
-							meta = append(meta, *m)
+							meta = append(meta, fmt.Sprintf("[%d]=%q", idx, *m))
 						} else {
-							meta = append(meta, "<nil>")
+							meta = append(meta, fmt.Sprintf("[%d]=<nil>", idx))
 						}
 					}
 				} else {
@@ -212,7 +212,16 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				}
 			}
 			if usedIdx == -1 || limitIdx == -1 || limitIdx >= usedIdx {
-				glog.Infof("Skipping resource for check %s: no parseable used/limit fields: %v", checkID, res.Metadata)
+				// Log the actual metadata values for human readability
+				var metaStrings []string
+				for idx, m := range res.Metadata {
+					if m != nil {
+						metaStrings = append(metaStrings, fmt.Sprintf("[%d]=%q", idx, *m))
+					} else {
+						metaStrings = append(metaStrings, fmt.Sprintf("[%d]=<nil>", idx))
+					}
+				}
+				glog.Infof("Skipping resource for check %s: no parseable used/limit fields: %s", checkID, strings.Join(metaStrings, ", "))
 				continue
 			}
 
@@ -235,8 +244,15 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 			if regionLabel == "-" {
 				regionLabel = "global"
 			}
-			usedStr := *res.Metadata[usedIdx]
-			limitStr := *res.Metadata[limitIdx]
+			// If used or limit field is null, treat as zero per AWS/Prometheus best practice
+			usedStr := "0"
+			if res.Metadata[usedIdx] != nil {
+				usedStr = *res.Metadata[usedIdx]
+			}
+			limitStr := "0"
+			if res.Metadata[limitIdx] != nil {
+				limitStr = *res.Metadata[limitIdx]
+			}
 			used, err1 := parseFloat(usedStr)
 			limit, err2 := parseFloat(limitStr)
 			if err1 != nil || err2 != nil {
