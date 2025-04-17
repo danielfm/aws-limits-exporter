@@ -192,44 +192,46 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				continue
 			}
 
-			// Dynamically find used and limit fields: the last two numeric fields in metadata
+			// --- Find the two numeric fields at the end of metadata (limit and used)
 			limitIdx := -1
 			usedIdx := -1
+			found := 0
 			for i := len(res.Metadata) - 1; i >= 0; i-- {
 				if res.Metadata[i] == nil {
 					continue
 				}
 				_, err := strconv.ParseFloat(strings.ReplaceAll(*res.Metadata[i], ",", ""), 64)
 				if err == nil {
-					if limitIdx == -1 {
-						limitIdx = i
-					} else if usedIdx == -1 {
+					if found == 0 {
 						usedIdx = i
+					} else if found == 1 {
+						limitIdx = i
 						break
 					}
+					found++
 				}
 			}
-			if usedIdx == -1 || limitIdx == -1 || usedIdx >= limitIdx {
-				glog.Warningf("Resource metadata for check %s does not contain parseable used/limit fields: %v", checkID, res.Metadata)
+			if usedIdx == -1 || limitIdx == -1 || limitIdx >= usedIdx {
+				glog.Infof("Skipping resource for check %s: no parseable used/limit fields: %v", checkID, res.Metadata)
 				continue
 			}
 
-			// Extract region, service, and resource labels for Prometheus
+			// --- Extract labels for Prometheus
 			regionLabel := "-"
-			serviceLabel := "-"
+			exportedServiceLabel := "-"
 			resourceLabel := "-"
 			if len(res.Metadata) > 2 {
 				if res.Metadata[0] != nil {
 					regionLabel = *res.Metadata[0]
 				}
 				if res.Metadata[1] != nil {
-					serviceLabel = *res.Metadata[1]
+					exportedServiceLabel = *res.Metadata[1]
 				}
 				if res.Metadata[2] != nil {
 					resourceLabel = *res.Metadata[2]
 				}
 			}
-			// Treat global (non-region) resources more clearly
+			// Treat global (non-region) resources as region="global"
 			if regionLabel == "-" {
 				regionLabel = "global"
 			}
@@ -238,37 +240,38 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 			used, err1 := parseFloat(usedStr)
 			limit, err2 := parseFloat(limitStr)
 			if err1 != nil || err2 != nil {
-				glog.Warningf("Cannot parse used/limit for check %s, resource %s/%s/%s: %v/%v", checkID, regionLabel, serviceLabel, resourceLabel, err1, err2)
+				glog.Infof("Cannot parse used/limit for check %s, resource %s/%s/%s: %v/%v", checkID, regionLabel, exportedServiceLabel, resourceLabel, err1, err2)
 				continue
 			}
 
-			// Build a key to avoid redundant Prometheus descriptors for each label set
-			metricKey := fmt.Sprintf("%s_%s_%s", regionLabel, serviceLabel, resourceLabel)
+			// Avoid redundant Prometheus descriptors for each label set
+			metricKey := fmt.Sprintf("%s_%s_%s", regionLabel, exportedServiceLabel, resourceLabel)
 			if e.metricsUsed[metricKey] == nil {
 				e.metricsUsed[metricKey] = prometheus.NewDesc(
-					"aws_service_limit_used_total",
+					"aws_service_used",
 					"Current used amount of the given AWS resource.",
-					[]string{"region", "service", "resource"}, nil,
+					[]string{"region", "exported_service", "resource"}, nil,
 				)
 			}
 			if e.metricsLimit[metricKey] == nil {
 				e.metricsLimit[metricKey] = prometheus.NewDesc(
-					"aws_service_limit_limit_total",
+					"aws_service_limit",
 					"Current limit of the given AWS resource.",
-					[]string{"region", "service", "resource"}, nil,
+					[]string{"region", "exported_service", "resource"}, nil,
 				)
 			}
+			// -- Emit metrics!
 			ch <- prometheus.MustNewConstMetric(
 				e.metricsUsed[metricKey],
 				prometheus.GaugeValue,
 				used,
-				regionLabel, serviceLabel, resourceLabel,
+				regionLabel, exportedServiceLabel, resourceLabel,
 			)
 			ch <- prometheus.MustNewConstMetric(
 				e.metricsLimit[metricKey],
 				prometheus.GaugeValue,
 				limit,
-				regionLabel, serviceLabel, resourceLabel,
+				regionLabel, exportedServiceLabel, resourceLabel,
 			)
 		}
 	}
@@ -280,7 +283,6 @@ func parseFloat(s string) (float64, error) {
 	return strconv.ParseFloat(s, 64)
 }
 
-// Not used in metric output, but available if needed for legacy keys
 func parseServiceNameFromCheck(result *support.TrustedAdvisorCheckResult) string {
 	if result == nil || result.CheckId == nil {
 		return "unknown"
