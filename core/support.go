@@ -26,7 +26,7 @@ func NewSupportClient(region string) *SupportClientImpl {
 	}
 }
 
-// GetAvailableCheckIDs fetches all Trusted Advisor check IDs available, optionally filtering for service_limits checks
+// GetAvailableCheckIDs fetches all Trusted Advisor check IDs in 'service_limits' category
 func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	input := &support.DescribeTrustedAdvisorChecksInput{
 		Language: aws.String("en"),
@@ -37,7 +37,6 @@ func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	}
 	ids := make([]string, 0, len(output.Checks))
 	for _, check := range output.Checks {
-		// Only collect service_limits checks for Prometheus metrics
 		if check.Id != nil && check.Category != nil && *check.Category == "service_limits" {
 			ids = append(ids, *check.Id)
 		}
@@ -60,7 +59,7 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 	return output.Result, nil
 }
 
-// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks, with nil/length checks
+// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks with ultimate nil-safety
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	var waitMs int64 = 3600000 // 1 hour
 	region := client.Region
@@ -104,7 +103,6 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				continue
 			}
 			for i, res := range result.FlaggedResources {
-				// Defensive: don't panic on nil/short metadata
 				var meta []string
 				if res.Metadata != nil {
 					for _, m := range res.Metadata {
@@ -114,11 +112,15 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 							meta = append(meta, "<nil>")
 						}
 					}
+				} else {
+					meta = append(meta, "<nil>")
 				}
+				regionVal := aws.StringValue(res.Region)
+				statusVal := aws.StringValue(res.Status)
 				glog.Infof("  Resource[%d]: Region=%s | Status=%s | Metadata=%v",
 					i,
-					aws.StringValue(res.Region),
-					aws.StringValue(res.Status),
+					regionVal,
+					statusVal,
 					meta,
 				)
 				if i == 4 && len(result.FlaggedResources) > 5 {
@@ -147,7 +149,7 @@ func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {
 	// Dynamic metrics: nothing to describe here
 }
 
-// Collect sends metric values to Prometheus
+// Collect sends metric values to Prometheus; panic-proof!
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	checkIDs, err := e.SupportClient.GetAvailableCheckIDs()
 	if err != nil {
@@ -165,7 +167,6 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 		for _, res := range result.FlaggedResources {
-			// Check for minimum metadata length and nils
 			if res.Metadata == nil || len(res.Metadata) < 3 {
 				glog.Warningf("Resource metadata too short for check %s: %v", checkID, res.Metadata)
 				continue
