@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// NewSupportClient creates a new SupportClientImpl for the given region
 func NewSupportClient(region string) *SupportClientImpl {
 	awsConfig := aws.NewConfig().WithRegion(region)
 	sess, err := session.NewSession(awsConfig)
@@ -26,7 +25,6 @@ func NewSupportClient(region string) *SupportClientImpl {
 	}
 }
 
-// GetAvailableCheckIDs fetches all Trusted Advisor check IDs in 'service_limits' category
 func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	input := &support.DescribeTrustedAdvisorChecksInput{
 		Language: aws.String("en"),
@@ -44,7 +42,6 @@ func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	return ids, nil
 }
 
-// DescribeServiceLimitsCheckResult fetches the result for a specific Trusted Advisor check
 func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error) {
 	input := &support.DescribeTrustedAdvisorCheckResultInput{
 		CheckId: aws.String(checkID),
@@ -59,7 +56,6 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 	return output.Result, nil
 }
 
-// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks, FULL NIL/POINTER SAFE
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	var waitMs int64 = 3600000 // 1 hour
 	region := client.Region
@@ -110,10 +106,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 			}
 
 			glog.Infof("Check '%s' summary: Status: %s, FlaggedResources: %d, ResourcesProcessed: %d",
-				checkID,
-				status,
-				flagged,
-				processed,
+				checkID, status, flagged, processed,
 			)
 
 			if result.FlaggedResources == nil {
@@ -121,17 +114,14 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				continue
 			}
 			for i, res := range result.FlaggedResources {
-				// Region
 				regionVal := "<nil>"
 				if res.Region != nil {
 					regionVal = *res.Region
 				}
-				// Status
 				statusVal := "<nil>"
 				if res.Status != nil {
 					statusVal = *res.Status
 				}
-				// Metadata
 				var meta []string
 				if res.Metadata != nil && len(res.Metadata) > 0 {
 					for _, m := range res.Metadata {
@@ -161,7 +151,6 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	}
 }
 
-// NewSupportExporter creates a new exporter for the given region
 func NewSupportExporter(region string) *SupportExporter {
 	return &SupportExporter{
 		SupportClient: NewSupportClient(region),
@@ -171,10 +160,8 @@ func NewSupportExporter(region string) *SupportExporter {
 	}
 }
 
-// Describe sends metric descriptors to Prometheus
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {}
 
-// Collect sends metric values to Prometheus; FULL NIL/POINTER SAFE
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	checkIDs, err := e.SupportClient.GetAvailableCheckIDs()
 	if err != nil {
@@ -196,19 +183,42 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				glog.Warningf("Resource metadata too short for check %s: %v", checkID, res.Metadata)
 				continue
 			}
-			if res.Metadata[0] == nil || res.Metadata[1] == nil || res.Metadata[2] == nil {
-				glog.Warningf("Resource metadata contains nil(s) for check %s: %v", checkID, res.Metadata)
+
+			// Dynamically find used and limit fields: the last two numeric fields in metadata
+			limitIdx := -1
+			usedIdx := -1
+			for i := len(res.Metadata) - 1; i >= 0; i-- {
+				if res.Metadata[i] == nil {
+					continue
+				}
+				_, err := strconv.ParseFloat(strings.ReplaceAll(*res.Metadata[i], ",", ""), 64)
+				if err == nil {
+					if limitIdx == -1 {
+						limitIdx = i
+					} else if usedIdx == -1 {
+						usedIdx = i
+						break
+					}
+				}
+			}
+			if usedIdx == -1 || limitIdx == -1 || usedIdx >= limitIdx {
+				glog.Warningf("Resource metadata for check %s does not contain parseable used/limit fields: %v", checkID, res.Metadata)
 				continue
 			}
-			resourceName := *res.Metadata[0]
-			usedStr := *res.Metadata[1]
-			limitStr := *res.Metadata[2]
+
+			resourceName := "-"
+			if len(res.Metadata) > 0 && res.Metadata[0] != nil {
+				resourceName = *res.Metadata[0]
+			}
+			usedStr := *res.Metadata[usedIdx]
+			limitStr := *res.Metadata[limitIdx]
 			used, err1 := parseFloat(usedStr)
 			limit, err2 := parseFloat(limitStr)
 			if err1 != nil || err2 != nil {
 				glog.Warningf("Cannot parse used/limit for check %s, resource %s: %v/%v", checkID, resourceName, err1, err2)
 				continue
 			}
+
 			serviceName := parseServiceNameFromCheck(result)
 			region := e.metricsRegion
 
@@ -243,7 +253,6 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// Helpers
 func parseFloat(s string) (float64, error) {
 	s = strings.ReplaceAll(s, ",", "")
 	return strconv.ParseFloat(s, 64)
