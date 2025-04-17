@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// NewSupportClient creates a new SupportClientImpl for the given region
 func NewSupportClient(region string) *SupportClientImpl {
 	awsConfig := aws.NewConfig().WithRegion(region)
 	sess, err := session.NewSession(awsConfig)
@@ -25,6 +26,7 @@ func NewSupportClient(region string) *SupportClientImpl {
 	}
 }
 
+// GetAvailableCheckIDs fetches all Trusted Advisor check IDs in 'service_limits' category
 func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	input := &support.DescribeTrustedAdvisorChecksInput{
 		Language: aws.String("en"),
@@ -42,6 +44,7 @@ func (client *SupportClientImpl) GetAvailableCheckIDs() ([]string, error) {
 	return ids, nil
 }
 
+// DescribeServiceLimitsCheckResult fetches the result for a specific Trusted Advisor check
 func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string) (*support.TrustedAdvisorCheckResult, error) {
 	input := &support.DescribeTrustedAdvisorCheckResultInput{
 		CheckId: aws.String(checkID),
@@ -56,6 +59,7 @@ func (client *SupportClientImpl) DescribeServiceLimitsCheckResult(checkID string
 	return output.Result, nil
 }
 
+// RequestServiceLimitsRefreshLoop periodically refreshes all available TA checks, FULL NIL/POINTER SAFE
 func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	var waitMs int64 = 3600000 // 1 hour
 	region := client.Region
@@ -88,25 +92,46 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 				glog.Warningf("No result for check: %s", checkID)
 				continue
 			}
+
+			// Defensive nil-checks for summary fields
+			status := ""
+			if result.Status != nil {
+				status = *result.Status
+			}
+			flagged := int64(0)
+			processed := int64(0)
+			if result.ResourcesSummary != nil {
+				if result.ResourcesSummary.ResourcesFlagged != nil {
+					flagged = *result.ResourcesSummary.ResourcesFlagged
+				}
+				if result.ResourcesSummary.ResourcesProcessed != nil {
+					processed = *result.ResourcesSummary.ResourcesProcessed
+				}
+			}
+
 			glog.Infof("Check '%s' summary: Status: %s, FlaggedResources: %d, ResourcesProcessed: %d",
 				checkID,
-				aws.StringValue(result.Status),
-				aws.Int64Value(result.ResourcesSummary.ResourcesFlagged),
-				aws.Int64Value(result.ResourcesSummary.ResourcesProcessed),
+				status,
+				flagged,
+				processed,
 			)
+
 			if result.FlaggedResources == nil {
 				glog.Warningf("No FlaggedResources for check: %s", checkID)
 				continue
 			}
 			for i, res := range result.FlaggedResources {
+				// Region
 				regionVal := "<nil>"
 				if res.Region != nil {
 					regionVal = *res.Region
 				}
+				// Status
 				statusVal := "<nil>"
 				if res.Status != nil {
 					statusVal = *res.Status
 				}
+				// Metadata
 				var meta []string
 				if res.Metadata != nil && len(res.Metadata) > 0 {
 					for _, m := range res.Metadata {
@@ -136,6 +161,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 	}
 }
 
+// NewSupportExporter creates a new exporter for the given region
 func NewSupportExporter(region string) *SupportExporter {
 	return &SupportExporter{
 		SupportClient: NewSupportClient(region),
@@ -145,8 +171,10 @@ func NewSupportExporter(region string) *SupportExporter {
 	}
 }
 
+// Describe sends metric descriptors to Prometheus
 func (e *SupportExporter) Describe(ch chan<- *prometheus.Desc) {}
 
+// Collect sends metric values to Prometheus; FULL NIL/POINTER SAFE
 func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	checkIDs, err := e.SupportClient.GetAvailableCheckIDs()
 	if err != nil {
@@ -215,6 +243,7 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+// Helpers
 func parseFloat(s string) (float64, error) {
 	s = strings.ReplaceAll(s, ",", "")
 	return strconv.ParseFloat(s, 64)
