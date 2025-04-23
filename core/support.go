@@ -13,6 +13,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Get AWS account id
+func getAccountID(region string) string {
+	sess, err := session.NewSession(aws.NewConfig().WithRegion(region))
+	if err != nil {
+		glog.Fatalf("Could not create AWS session: %v", err)
+	}
+	svc := sts.New(sess)
+	out, err := svc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	if err != nil {
+		glog.Fatalf("Could not get AWS account ID: %v", err)
+	}
+	return aws.StringValue(out.Account)
+}
+
 // Create a new AWS Support client for the given region
 func NewSupportClient(region string) *SupportClientImpl {
 	awsConfig := aws.NewConfig().WithRegion(region)
@@ -158,6 +172,7 @@ func (client *SupportClientImpl) RequestServiceLimitsRefreshLoop() {
 
 // Constructs the Prometheus exporter
 func NewSupportExporter(region string) *SupportExporter {
+	accountID := getAccountID(region)
 	return &SupportExporter{
 		SupportClient: NewSupportClient(region),
 		metricsRegion: region,
@@ -266,14 +281,14 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				e.metricsUsed[metricKey] = prometheus.NewDesc(
 					"aws_service_used",
 					"Current used amount of the given AWS resource.",
-					[]string{"region", "exported_service", "resource"}, nil,
+					[]string{"region", "exported_service", "resource", "account_id"}, nil,
 				)
 			}
 			if e.metricsLimit[metricKey] == nil {
 				e.metricsLimit[metricKey] = prometheus.NewDesc(
 					"aws_service_limit",
 					"Current limit of the given AWS resource.",
-					[]string{"region", "exported_service", "resource"}, nil,
+					[]string{"region", "exported_service", "resource", "account_id"}, nil,
 				)
 			}
 			// -- Emit metrics!
@@ -281,13 +296,13 @@ func (e *SupportExporter) Collect(ch chan<- prometheus.Metric) {
 				e.metricsUsed[metricKey],
 				prometheus.GaugeValue,
 				used,
-				regionLabel, exportedServiceLabel, resourceLabel,
+				regionLabel, exportedServiceLabel, resourceLabel, e.accountID,
 			)
 			ch <- prometheus.MustNewConstMetric(
 				e.metricsLimit[metricKey],
 				prometheus.GaugeValue,
 				limit,
-				regionLabel, exportedServiceLabel, resourceLabel,
+				regionLabel, exportedServiceLabel, resourceLabel, e.accountID,
 			)
 		}
 	}
