@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/support"
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
@@ -178,6 +179,7 @@ func NewSupportExporter(region string) *SupportExporter {
 		metricsRegion: region,
 		metricsUsed:   make(map[string]*prometheus.Desc),
 		metricsLimit:  make(map[string]*prometheus.Desc),
+		accountID:     accountID,
 	}
 }
 
