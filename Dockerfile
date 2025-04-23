@@ -1,6 +1,6 @@
 # build stage
 FROM golang:1.22-alpine AS build-env
-RUN apk add --no-cache --update ca-certificates
+RUN apk add --no-cache --update alpine-sdk
 ENV REPO_PATH=/build
 COPY . $REPO_PATH
 WORKDIR $REPO_PATH
