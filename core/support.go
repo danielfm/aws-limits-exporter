@@ -21,11 +21,13 @@ import (
 // DynamoDB Write Capacity 	c5ftjdfkMr
 // EBS - Active Snapshots		eI7KK0l7J9
 // EBS - Cold HDD (sc1) 	gH5CC0e3J9
-// EBS - General Purpose SSD Volume Storage		dH7RR0l6J9
+// EBS - General Purpose SSD Volume Storage	(gp2)	dH7RR0l6J9
+// EBS - General Purpose SSD Volume Storage (gp3)		dH7RR0l6J3
 // EBS - Magnetic (standard) Volume Storage		cG7HH0l7J9
 // EBS Throughput Optimized HDD (st1)		wH7DD0l3J9
 // EBS - Provisioned IOPS (SSD) Volume Aggregate IOPS		tV7YY0l7J9
 // EBS - Provisioned IOPS SSD (io1) Volume Storage		gI7MM0l7J9
+// EBS - Provisioned IOPS SSD (io2) Volume Storage		gI7MM0l7J2
 // EC2 - Elastic IP Addresses		aW9HH0l8J6
 // EC2 - On-Demand Instances		0Xc6LMYG8P
 // EC2 - Reserved Instance Leases		iH7PP0l7J9
@@ -39,6 +41,7 @@ import (
 // IAM - Server Certificates		rT7WW0l7J9
 // IAM - Users		qS7VV0l7J9
 // Kinesis - Shards per Region		bW7HH0l7J9
+// Lambda - Core Storage		c1dfprch07
 // RDS - Cluster Parameter Groups		jtlIMO3qZM
 // RDS - Cluster roles		7fuccf1Mx7
 // RDS - Clusters		gjqMBn6pjz
@@ -63,6 +66,7 @@ import (
 // VPC - Elastic IP Address		lN7RR0l7J9
 // VPC - Internet Gateways		kM7QQ0l7J9
 // VPC - Network Interfaces		jL7PP0l7J9
+
 var (
 	checkIDs = []string{
 		"fW7HH0l7J9",
@@ -114,6 +118,9 @@ var (
 		"lN7RR0l7J9",
 		"kM7QQ0l7J9",
 		"jL7PP0l7J9",
+		"gI7MM0l7J2",
+		"c1dfprch07",
+		"dH7RR0l6J3",
 	}
 )
 
@@ -291,7 +298,7 @@ func newServerMetric(region, subSystem, metricName, docString string, labels []s
 	return prometheus.NewDesc(
 		prometheus.BuildFQName("aws", subSystem, metricName),
 		docString, labels, prometheus.Labels{
-			"region": region,
+			"region":      region,
 			"aws_service": subSystem,
 		},
 	)
